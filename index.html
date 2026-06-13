@@ -1,1277 +1,274 @@
-```react
-import React, { useState, useEffect } from 'react';
-import { initializeApp } from 'firebase/app';
-import { getAuth, signInWithCustomToken, signInAnonymously, onAuthStateChanged } from 'firebase/auth';
-import { getFirestore, doc, setDoc, collection, onSnapshot, updateDoc, deleteDoc, addDoc } from 'firebase/firestore';
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=yes">
+    <title>BLOOM 绽里 · 点餐系统</title>
+    <script src="https://unpkg.com/react@18.2.0/umd/react.development.js"></script>
+    <script src="https://unpkg.com/react-dom@18.2.0/umd/react-dom.development.js"></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        .scrollbar-none::-webkit-scrollbar { display: none; }
+        button { cursor: pointer; }
+        .animate-fade-in { animation: fade-in 0.2s ease-out; }
+        @keyframes fade-in { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+    </style>
+</head>
+<body class="bg-[#fcf9f5]">
+    <div id="root"></div>
+    <script type="text/babel">
+    const { useState, useEffect } = React;
 
-// ==========================================
-// 1. 数据库与云同步初始化 (自适应架构)
-// ==========================================
-let db = null;
-let auth = null;
-let appId = 'bloom-restaurant-app';
-let isFirebaseEnabled = false;
-
-try {
-  if (typeof __firebase_config !== 'undefined' && __firebase_config) {
-    const firebaseConfig = JSON.parse(__firebase_config);
-    const app = initializeApp(firebaseConfig);
-    auth = getAuth(app);
-    db = getFirestore(app);
-    appId = typeof __app_id !== 'undefined' ? __app_id : 'bloom-restaurant-app';
-    isFirebaseEnabled = true;
-  }
-} catch (error) {
-  console.log("未检测到云端配置，系统将无缝切换至本地LocalStorage模式运行。", error);
-}
-
-// 预设高画质食物模版照片
-const FOOD_TEMPLATES = [
-  { name: '饭类', url: 'https://images.unsplash.com/photo-1512058564366-18510be2db19?w=600&auto=format&fit=crop&q=80' },
-  { name: '面类', url: 'https://images.unsplash.com/photo-1569718212165-3a8278d5f624?w=600&auto=format&fit=crop&q=80' },
-  { name: '寿司', url: 'https://images.unsplash.com/photo-1579871494447-9811cf80d66c?w=600&auto=format&fit=crop&q=80' },
-  { name: '小吃', url: 'https://images.unsplash.com/photo-1563245372-f21724e3856d?w=600&auto=format&fit=crop&q=80' },
-  { name: '甜品', url: 'https://images.unsplash.com/photo-1551024601-bec78aea704b?w=600&auto=format&fit=crop&q=80' },
-  { name: '饮品', url: 'https://images.unsplash.com/photo-1509042239860-f550ce710b93?w=600&auto=format&fit=crop&q=80' }
+const TEMPLATES = [
+    'https://images.unsplash.com/photo-1512058564366-18510be2db19?w=400',
+    'https://images.unsplash.com/photo-1569718212165-3a8278d5f624?w=400',
+    'https://images.unsplash.com/photo-1579871494447-9811cf80d66c?w=400',
+    'https://images.unsplash.com/photo-1563245372-f21724e3866d?w=400',
+    'https://images.unsplash.com/photo-1551024601-bec78aea704b?w=400',
+    'https://images.unsplash.com/photo-1509042239860-f550ce710b93?w=400'
 ];
 
-// 三语菜单基础模版 (根据新分类重新编写)
 const DEFAULT_MENU = [
-  { 
-    id: '1', 
-    name_zh: '温泉蛋黑椒和牛饭', 
-    name_en: 'Wagyu Beef Rice with Onsen Egg',
-    name_es: 'Arroz con Ternera Wagyu y Huevo Onsen',
-    price: 18.50, 
-    category: '饭类', 
-    desc_zh: '精选澳洲和牛，秘制黑椒酱汁，搭配一颗完美温泉蛋，麦香浓郁。', 
-    desc_en: 'Premium Australian Wagyu beef, signature black pepper sauce, topped with a soft onsen egg.',
-    desc_es: 'Ternera Wagyu australiana de primera calidad, salsa de pimienta negra, con un huevo onsen tierno.',
-    img: FOOD_TEMPLATES[0].url 
-  },
-  { 
-    id: '2', 
-    name_zh: '招牌黑蒜油豚骨拉面', 
-    name_en: 'Signature Black Garlic Tonkotsu Ramen',
-    name_es: 'Ramen Tonkotsu con Ajo Negro',
-    price: 16.00, 
-    category: '面类', 
-    desc_zh: '慢火熬制12小时浓郁猪骨汤，手作拉面，佐以香浓黑蒜油。', 
-    desc_en: '12-hour slow-cooked rich pork bone broth, handmade ramen noodles, drizzled with aromatic black garlic oil.',
-    desc_es: 'Caldo espeso de cerdo cocido a fuego lento durante 12 horas, fideos ramen artesanales, con aceite de ajo negro.',
-    img: FOOD_TEMPLATES[1].url 
-  },
-  { 
-    id: '3', 
-    name_zh: '火炙芝士三文鱼握寿司', 
-    name_en: 'Aburi Cheese Salmon Nigiri',
-    name_es: 'Nigiri de Salmón Flameado con Queso',
-    price: 12.00, 
-    category: '寿司', 
-    desc_zh: '肥美三文鱼，盖上特制芝士片火炙，入口即化，奶香四溢。', 
-    desc_en: 'Plump salmon slices topped with special cheese, torched perfectly to melt in your mouth.',
-    desc_es: 'Láminas de salmón fresco con queso especial flameado, se derriten en la boca con un toque cremoso.',
-    img: FOOD_TEMPLATES[2].url 
-  },
-  { 
-    id: '4', 
-    name_zh: '日式黄金章鱼烧', 
-    name_en: 'Golden Takoyaki',
-    name_es: 'Takoyaki Dorado',
-    price: 8.50, 
-    category: '亚洲小吃', 
-    desc_zh: '外皮金黄酥脆，内里藏有大颗章鱼肉，木鱼花随热气舞动。', 
-    desc_en: 'Crispy golden batter balls with tender octopus chunks inside, topped with dancing bonito flakes.',
-    desc_es: 'Bolas doradas y crujientes rellenas de tiernos trozos de pulpo, coronadas con copos de bonito.',
-    img: FOOD_TEMPLATES[3].url 
-  },
-  { 
-    id: '5', 
-    name_zh: '宇治抹茶大福', 
-    name_en: 'Uji Matcha Daifuku',
-    name_es: 'Daifuku de Matcha Uji',
-    price: 6.00, 
-    category: '甜点', 
-    desc_zh: '软糯冰皮包裹香浓宇治抹茶内馅与绵密红豆泥，清甜不腻。', 
-    desc_en: 'Soft sticky rice cake filled with rich Uji matcha cream and sweet red bean paste.',
-    desc_es: 'Pastel de arroz tierno relleno de crema de matcha Uji y pasta dulce de judías rojas.',
-    img: FOOD_TEMPLATES[4].url 
-  },
-  { 
-    id: '6', 
-    name_zh: '清爽冷泡白桃乌龙', 
-    name_en: 'Cold Brew Peach Oolong Tea',
-    name_es: 'Té Oolong de Melocotón Frío',
-    price: 5.00, 
-    category: '饮品', 
-    desc_zh: '精选高山乌龙茶低迷冷泡，融入甜美多汁的白桃果香。', 
-    desc_en: 'Premium mountain Oolong tea cold-brewed to perfection, infused with sweet peach aroma.',
-    desc_es: 'Té Oolong de alta montaña preparado en frío, infundido con el dulce aroma del melocotón.',
-    img: FOOD_TEMPLATES[5].url 
-  }
+    { id:'1', name_zh:'温泉蛋黑椒和牛饭', name_en:'Wagyu Rice', name_es:'Arroz Wagyu', price:18.5, category:'饭类', desc_zh:'精选澳洲和牛', desc_en:'Premium beef', desc_es:'Ternera premium', img:TEMPLATES[0] },
+    { id:'2', name_zh:'招牌黑蒜油豚骨拉面', name_en:'Black Garlic Ramen', name_es:'Ramen', price:16, category:'面类', desc_zh:'浓郁猪骨汤', desc_en:'Rich broth', desc_es:'Caldo rico', img:TEMPLATES[1] },
+    { id:'3', name_zh:'火炙芝士三文鱼寿司', name_en:'Aburi Salmon', name_es:'Salmón', price:12, category:'寿司', desc_zh:'火炙三文鱼', desc_en:'Torched salmon', desc_es:'Salmón flameado', img:TEMPLATES[2] },
+    { id:'4', name_zh:'日式黄金章鱼烧', name_en:'Takoyaki', name_es:'Takoyaki', price:8.5, category:'亚洲小吃', desc_zh:'外脆里嫩', desc_en:'Crispy', desc_es:'Crujiente', img:TEMPLATES[3] },
+    { id:'5', name_zh:'宇治抹茶大福', name_en:'Matcha Daifuku', name_es:'Daifuku', price:6, category:'甜点', desc_zh:'软糯抹茶', desc_en:'Soft matcha', desc_es:'Suave matcha', img:TEMPLATES[4] },
+    { id:'6', name_zh:'白桃乌龙冷泡茶', name_en:'Peach Oolong', name_es:'Té Oolong', price:5, category:'饮品', desc_zh:'清爽冷泡', desc_en:'Cold brew', desc_es:'Té frío', img:TEMPLATES[5] }
 ];
 
-// 三语文本资源词典
-const TRANSLATIONS = {
-  zh: {
-    title: "BLOOM 绽里",
-    subtitle: "快捷点餐系统",
-    switchLanguage: "切换语言",
-    customerMenu: "美味菜单",
-    myOrders: "我的订单",
-    adminPortal: "切换老板后台",
-    backToMenu: "返回顾客点餐",
-    todaySpecial: "精品推荐",
-    bannerTitle: "BLOOM 绽里 伴您温暖每一餐",
-    bannerDesc: "每一碗都是匠心熬制的浓郁滋味，融汇自然本味，绽放舌尖暖意。",
-    all: "全部",
-    rice: "饭类",
-    noodles: "面类",
-    sushi: "寿司",
-    snacks: "亚洲小吃",
-    desserts: "甜点",
-    drinks: "饮品",
-    addToCart: "添加一份",
-    checkout: "立即下单",
-    emptyCategory: "该分类下暂时没有菜品上架",
-    noOrders: "您目前还没有下过单，快去点几道美食吧",
-    orderStatus: "您的订单进度",
-    orderStatus1: "已下单",
-    orderStatus2: "制作中",
-    orderStatus3: "已送达",
-    adminLoginTitle: "老板后台安全验证",
-    adminLoginDesc: "请输入老板专属管理密码进入后台进行菜品及订单管理",
-    passwordLabel: "管理密码",
-    passwordPlaceholder: "请输入密码",
-    unlockBtn: "解锁后台",
-    adminOrderPanel: "实时订单接收与派送面板",
-    adminDishPanel: "全店菜品价格及照片更新",
-    addDish: "新增美食菜品",
-    editDish: "修改已有菜品",
-    dishNameZh: "菜品中文名 *",
-    dishNameEn: "菜品英文名 *",
-    dishNameEs: "菜品西文名 *",
-    price: "价格 ($) *",
-    category: "分类 *",
-    descZh: "中文菜品描述",
-    descEn: "英文菜品描述",
-    descEs: "西文菜品描述",
-    photoLabel: "上传或挑选照片",
-    uploadLocal: "从手机相册上传照片",
-    useTemplate: "或快捷选择精选美食图库：",
-    previewPhoto: "当前图片预览",
-    submitAdd: "立即上架",
-    submitEdit: "保存修改",
-    cancelEdit: "取消修改",
-    startCooking: "开始做菜",
-    markDelivered: "标记送达",
-    editBtn: "编辑",
-    removeBtn: "下架",
-    total: "共计",
-    emptyOrdersAdmin: "暂无顾客下单，静候新订单中",
-    alertOrderSuccess: "下单成功！厨房正在为您加紧制作 👨‍🍳",
-    alertOrderOffline: "本地模拟下单成功！👨‍🍳",
-    alertOrderFailed: "网络异常，下单失败",
-    alertAddSuccess: "成功上架菜品",
-    alertEditSuccess: "成功保存菜品修改",
-    alertDeleteConfirm: "确定要删除这道菜吗？",
-    alertDeleteSuccess: "已成功下架菜品",
-    alertStatusUpdated: "订单状态已更新",
-    alertFillRequired: "请填写完整的名称与价格",
-    alertWrongPassword: "密码错误！老板密码已重置为专属密码",
-    orderNo: "订单编号",
-    imageLoaded: "✨ 图片加载成功，已更新预览！",
-    imageTooBig: "❌ 图片太大（限2.5MB以下），请换一张或用系统图库",
-    imageReadError: "❌ 图片读取出错，请重新选择"
-  },
-  en: {
-    title: "BLOOM",
-    subtitle: "Mobile Ordering",
-    switchLanguage: "Language",
-    customerMenu: "Menu",
-    myOrders: "My Orders",
-    adminPortal: "Admin Portal",
-    backToMenu: "Back to Menu",
-    todaySpecial: "Today's Special",
-    bannerTitle: "BLOOM • Warmth in Every Spoon",
-    bannerDesc: "Each bowl is crafted with love and natural ingredients, blooming warmth on your palate.",
-    all: "All",
-    rice: "Rice",
-    noodles: "Noodles",
-    sushi: "Sushi",
-    snacks: "Asian Snacks",
-    desserts: "Desserts",
-    drinks: "Drinks",
-    addToCart: "Add to Order",
-    checkout: "Place Order",
-    emptyCategory: "No dishes available in this category.",
-    noOrders: "You have not placed any orders yet.",
-    orderStatus: "Your Order Progress",
-    orderStatus1: "Ordered",
-    orderStatus2: "Cooking",
-    orderStatus3: "Delivered",
-    adminLoginTitle: "Admin Security Verification",
-    adminLoginDesc: "Please enter your exclusive administrator password to access dashboard.",
-    passwordLabel: "Admin Password",
-    passwordPlaceholder: "Enter password",
-    unlockBtn: "Unlock Dashboard",
-    adminOrderPanel: "Real-time Order Dashboard",
-    adminDishPanel: "Quick Dish & Price Manager",
-    addDish: "Add New Dish",
-    editDish: "Edit Dish",
-    dishNameZh: "Dish Chinese Name *",
-    dishNameEn: "Dish English Name *",
-    dishNameEs: "Dish Spanish Name *",
-    price: "Price ($) *",
-    category: "Category *",
-    descZh: "Chinese Description",
-    descEn: "English Description",
-    descEs: "Spanish Description",
-    photoLabel: "Upload or Choose Photo",
-    uploadLocal: "Upload from Photo Album",
-    useTemplate: "Or quick-select from our template library:",
-    previewPhoto: "Selected Photo Preview",
-    submitAdd: "Add to Menu",
-    submitEdit: "Save Changes",
-    cancelEdit: "Cancel",
-    startCooking: "Start cooking",
-    markDelivered: "Mark Delivered",
-    editBtn: "Edit",
-    removeBtn: "Delete",
-    total: "Total",
-    emptyOrdersAdmin: "No customer orders yet, waiting...",
-    alertOrderSuccess: "Ordered successfully! Kitchen is preparing 👨‍🍳",
-    alertOrderOffline: "Simulated order placed locally! 👨‍🍳",
-    alertOrderFailed: "Network connection failed, please try again",
-    alertAddSuccess: "Dish successfully added",
-    alertEditSuccess: "Dish changes saved",
-    alertDeleteConfirm: "Are you sure you want to delete this dish?",
-    alertDeleteSuccess: "Dish successfully removed",
-    alertStatusUpdated: "Order status updated",
-    alertFillRequired: "Please fill in all required fields",
-    alertWrongPassword: "Access Denied! Incorrect administrator password",
-    orderNo: "Order ID",
-    imageLoaded: "✨ Image loaded and preview updated!",
-    imageTooBig: "❌ Image is too large (Max 2.5MB), please choose another one",
-    imageReadError: "❌ Failed to read image, please try again"
-  },
-  es: {
-    title: "BLOOM",
-    subtitle: "Pedido Digital",
-    switchLanguage: "Idioma",
-    customerMenu: "Menú",
-    myOrders: "Mis Pedidos",
-    adminPortal: "Acceso Administrador",
-    backToMenu: "Volver al Menú",
-    todaySpecial: "Especial del Día",
-    bannerTitle: "BLOOM • Calidez en Cada Plato",
-    bannerDesc: "Cada tazón se elabora artesanalmente con ingredientes frescos y naturales.",
-    all: "Todos",
-    rice: "Arroz",
-    noodles: "Fideos",
-    sushi: "Sushi",
-    snacks: "Snacks Asiáticos",
-    desserts: "Postres",
-    drinks: "Bebidas",
-    addToCart: "Pedir",
-    checkout: "Confirmar Pedido",
-    emptyCategory: "No hay platos en esta categoría todavía.",
-    noOrders: "Aún no ha realizado ningún pedido.",
-    orderStatus: "Estado de Su Pedido",
-    orderStatus1: "Recibido",
-    orderStatus2: "En Cocina",
-    orderStatus3: "Entregado",
-    adminLoginTitle: "Verificación del Administrador",
-    adminLoginDesc: "Ingrese su contraseña de administrador para gestionar platos y pedidos.",
-    passwordLabel: "Contraseña",
-    passwordPlaceholder: "Ingrese la contraseña",
-    unlockBtn: "Desbloquear",
-    adminOrderPanel: "Panel de Pedidos en Tiempo Real",
-    adminDishPanel: "Gestor de Platos y Precios",
-    addDish: "Añadir Nuevo Plato",
-    editDish: "Editar Plato",
-    dishNameZh: "Nombre en Chino *",
-    dishNameEn: "Nombre en Inglés *",
-    dishNameEs: "Nombre en Español *",
-    price: "Precio ($) *",
-    category: "Categoría *",
-    descZh: "Descripción en Chino",
-    descEn: "Descripción en Inglés",
-    descEs: "Descripción en Español",
-    photoLabel: "Subir o Elegir Foto",
-    uploadLocal: "Subir desde la Galería",
-    useTemplate: "O elija de nuestra biblioteca:",
-    previewPhoto: "Vista Previa",
-    submitAdd: "Subir al Menú",
-    submitEdit: "Guardar Cambios",
-    cancelEdit: "Cancelar",
-    startCooking: "Cocinar",
-    markDelivered: "Entregar",
-    editBtn: "Editar",
-    removeBtn: "Quitar",
-    total: "Total",
-    emptyOrdersAdmin: "No hay pedidos entrantes en este momento",
-    alertOrderSuccess: "¡Pedido confirmado! La cocina está trabajando 👨‍🍳",
-    alertOrderOffline: "¡Pedido local confirmado! 👨‍🍳",
-    alertOrderFailed: "Error de red, no se pudo realizar el pedido",
-    alertAddSuccess: "Plato añadido correctamente",
-    alertEditSuccess: "Plato actualizado correctamente",
-    alertDeleteConfirm: "¿Está seguro de eliminar este plato?",
-    alertDeleteSuccess: "Plato retirado del menú",
-    alertStatusUpdated: "Estado de pedido actualizado",
-    alertFillRequired: "Por favor complete los campos obligatorios",
-    alertWrongPassword: "¡Contraseña incorrecta de administrador!",
-    orderNo: "Pedido Nro",
-    imageLoaded: "✨ ¡Imagen cargada y vista previa actualizada!",
-    imageTooBig: "❌ La imagen es demasiado grande (Máx. 2.5MB), elija otra",
-    imageReadError: "❌ Error al leer la imagen, inténtelo de nuevo"
-  }
+const TEXTS = {
+    zh: { menu:'菜单', orders:'订单', admin:'后台', back:'返回', all:'全部', rice:'饭类', noodles:'面类', sushi:'寿司', snacks:'小吃', desserts:'甜点', drinks:'饮品', add:'添加', checkout:'下单', noOrders:'暂无订单', total:'合计', ordered:'已下单', cooking:'制作中', delivered:'已送达', password:'密码', unlock:'进入', wrong:'密码错误', addDish:'新增', editDish:'编辑', nameZh:'中文名', nameEn:'英文名', nameEs:'西文名', price:'价格', category:'分类', upload:'上传图片', success:'成功', confirmDel:'删除？' },
+    en: { menu:'Menu', orders:'Orders', admin:'Admin', back:'Back', all:'All', rice:'Rice', noodles:'Noodles', sushi:'Sushi', snacks:'Snacks', desserts:'Desserts', drinks:'Drinks', add:'Add', checkout:'Order', noOrders:'No orders', total:'Total', ordered:'Ordered', cooking:'Cooking', delivered:'Delivered', password:'Password', unlock:'Enter', wrong:'Wrong pw', addDish:'Add', editDish:'Edit', nameZh:'Chinese', nameEn:'English', nameEs:'Spanish', price:'Price', category:'Category', upload:'Upload', success:'OK', confirmDel:'Delete?' },
+    es: { menu:'Menú', orders:'Pedidos', admin:'Admin', back:'Volver', all:'Todos', rice:'Arroz', noodles:'Fideos', sushi:'Sushi', snacks:'Snacks', desserts:'Postres', drinks:'Bebidas', add:'Agregar', checkout:'Pedir', noOrders:'Sin pedidos', total:'Total', ordered:'Recibido', cooking:'Cocinando', delivered:'Entregado', password:'Clave', unlock:'Entrar', wrong:'Clave mala', addDish:'Añadir', editDish:'Editar', nameZh:'Chino', nameEn:'Inglés', nameEs:'Español', price:'Precio', category:'Categoría', upload:'Subir', success:'OK', confirmDel:'¿Eliminar?' }
 };
 
-export default function App() {
-  const [lang, setLang] = useState('zh'); // 'zh' | 'en' | 'es'
-  const t = TRANSLATIONS[lang];
+const App = () => {
+    const [lang, setLang] = useState('zh');
+    const t = TEXTS[lang];
+    const [menu, setMenu] = useState([]);
+    const [orders, setOrders] = useState([]);
+    const [cart, setCart] = useState([]);
+    const [tab, setTab] = useState('menu');
+    const [category, setCategory] = useState('全部');
+    const [currentOrderId, setCurrentOrderId] = useState(null);
+    const [admin, setAdmin] = useState(false);
+    const [pwd, setPwd] = useState('');
+    const [pwdErr, setPwdErr] = useState('');
+    const [editing, setEditing] = useState(null);
+    const [form, setForm] = useState({ name_zh:'', name_en:'', name_es:'', price:'', category:'饭类', desc_zh:'', desc_en:'', desc_es:'', img:'' });
+    const [msg, setMsg] = useState(null);
 
-  // 基础状态
-  const [user, setUser] = useState(null);
-  const [activeTab, setActiveTab] = useState('menu'); // 'menu' | 'orders' | 'admin'
-  const [menuItems, setMenuItems] = useState([]);
-  const [cart, setCart] = useState([]);
-  const [currentCategory, setCurrentCategory] = useState('全部');
-  const [receivedOrders, setReceivedOrders] = useState([]); 
-  const [currentOrderId, setCurrentOrderId] = useState(null);
+    useEffect(() => {
+        const savedMenu = localStorage.getItem('bloom_menu');
+        if (savedMenu) setMenu(JSON.parse(savedMenu));
+        else { setMenu(DEFAULT_MENU); localStorage.setItem('bloom_menu', JSON.stringify(DEFAULT_MENU)); }
+        const savedOrders = localStorage.getItem('bloom_orders');
+        if (savedOrders) setOrders(JSON.parse(savedOrders));
+    }, []);
 
-  // 后台登录与编辑相关
-  const [isAdminLoggedIn, setIsAdminLoggedIn] = useState(false);
-  const [adminPasswordInput, setAdminPasswordInput] = useState('');
-  const [passwordError, setPasswordError] = useState('');
-  
-  // 菜品编辑表单
-  const [editingItem, setEditingItem] = useState(null); 
-  const [formData, setFormData] = useState({ 
-    name_zh: '', name_en: '', name_es: '', 
-    price: '', category: '饭类', 
-    desc_zh: '', desc_en: '', desc_es: '', 
-    img: '' 
-  });
-  const [showNotification, setShowNotification] = useState(null);
+    useEffect(() => { if(menu.length) localStorage.setItem('bloom_menu', JSON.stringify(menu)); }, [menu]);
+    useEffect(() => { localStorage.setItem('bloom_orders', JSON.stringify(orders)); }, [orders]);
 
-  // 1. 初始化Auth及多端同步数据
-  useEffect(() => {
-    if (!isFirebaseEnabled) {
-      const localMenu = localStorage.getItem('bloom_menu_items_v2');
-      if (localMenu) {
-        setMenuItems(JSON.parse(localMenu));
-      } else {
-        setMenuItems(DEFAULT_MENU);
-        localStorage.setItem('bloom_menu_items_v2', JSON.stringify(DEFAULT_MENU));
-      }
+    const showMsg = (text) => { setMsg(text); setTimeout(() => setMsg(null), 2500); };
 
-      const localOrders = localStorage.getItem('bloom_orders_v2');
-      if (localOrders) {
-        setReceivedOrders(JSON.parse(localOrders));
-      }
-      return;
-    }
+    const getName = (item) => lang==='zh'?item.name_zh:lang==='en'?item.name_en:item.name_es;
+    const getDesc = (item) => lang==='zh'?item.desc_zh:lang==='en'?item.desc_en:item.desc_es;
 
-    const initAuth = async () => {
-      try {
-        if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
-          await signInWithCustomToken(auth, __initial_auth_token);
-        } else {
-          await signInAnonymously(auth);
-        }
-      } catch (error) {
-        console.error("Auth initialization failed", error);
-      }
-    };
-    initAuth();
-
-    const unsubscribe = onAuthStateChanged(auth, setUser);
-    return () => unsubscribe();
-  }, []);
-
-  // 2. 实时数据库侦听
-  useEffect(() => {
-    if (!isFirebaseEnabled || !user) return;
-
-    // 实时菜单监听
-    const menuColRef = collection(db, 'artifacts', appId, 'public', 'data', 'menu');
-    const unsubscribeMenu = onSnapshot(menuColRef, (snapshot) => {
-      const items = [];
-      snapshot.forEach((doc) => {
-        items.push({ id: doc.id, ...doc.data() });
-      });
-      if (items.length === 0) {
-        DEFAULT_MENU.forEach(async (item) => {
-          await setDoc(doc(db, 'artifacts', appId, 'public', 'data', 'menu', item.id), item);
-        });
-        setMenuItems(DEFAULT_MENU);
-      } else {
-        setMenuItems(items);
-      }
-    }, (error) => {
-      console.error("Fetch Menu Error: ", error);
-    });
-
-    // 实时订单监听
-    const ordersColRef = collection(db, 'artifacts', appId, 'public', 'data', 'orders');
-    const unsubscribeOrders = onSnapshot(ordersColRef, (snapshot) => {
-      const orders = [];
-      snapshot.forEach((doc) => {
-        orders.push({ id: doc.id, ...doc.data() });
-      });
-      orders.sort((a, b) => b.timestamp - a.timestamp);
-      setReceivedOrders(orders);
-    }, (error) => {
-      console.error("Fetch Orders Error: ", error);
-    });
-
-    return () => {
-      unsubscribeMenu();
-      unsubscribeOrders();
-    };
-  }, [user]);
-
-  // 全局轻量提示
-  const triggerNotification = (message, type = 'success') => {
-    setShowNotification({ message, type });
-    setTimeout(() => setShowNotification(null), 3500);
-  };
-
-  // 3. 购物车逻辑
-  const addToCart = (item) => {
-    const existingIndex = cart.findIndex(cartItem => cartItem.id === item.id);
-    if (existingIndex > -1) {
-      const updatedCart = [...cart];
-      updatedCart[existingIndex].quantity += 1;
-      setCart(updatedCart);
-    } else {
-      setCart([...cart, { ...item, quantity: 1 }]);
-    }
-    const localizedName = lang === 'zh' ? item.name_zh : (lang === 'en' ? item.name_en : item.name_es);
-    triggerNotification(`+1 ${localizedName}`);
-  };
-
-  const updateCartQuantity = (itemId, amount) => {
-    const updatedCart = cart.map(item => {
-      if (item.id === itemId) {
-        const newQty = item.quantity + amount;
-        return newQty > 0 ? { ...item, quantity: newQty } : null;
-      }
-      return item;
-    }).filter(Boolean);
-    setCart(updatedCart);
-  };
-
-  const cartTotal = cart.reduce((total, item) => total + (item.price * item.quantity), 0);
-
-  // 下单提交 (去除桌号限制，使用随机订单简短代号标识订单)
-  const submitOrder = async () => {
-    if (cart.length === 0) return;
-    
-    const randomOrderId = Math.floor(1000 + Math.random() * 9000); // 4位简短餐单代号
-    const newOrder = {
-      orderCode: `#${randomOrderId}`,
-      items: cart,
-      totalPrice: cartTotal,
-      status: '已下单',
-      timestamp: Date.now(),
+    const addToCart = (item) => {
+        const exist = cart.find(i => i.id === item.id);
+        if(exist) setCart(cart.map(i => i.id===item.id ? {...i, quantity:i.quantity+1} : i));
+        else setCart([...cart, {...item, quantity:1}]);
+        showMsg(`+1 ${getName(item)}`);
     };
 
-    if (isFirebaseEnabled && db) {
-      try {
-        const docRef = await addDoc(collection(db, 'artifacts', appId, 'public', 'data', 'orders'), newOrder);
-        setCurrentOrderId(docRef.id);
-        triggerNotification(t.alertOrderSuccess);
-      } catch (err) {
-        console.error(err);
-        triggerNotification(t.alertOrderFailed, 'error');
-      }
-    } else {
-      // 本地离线环境
-      const offlineOrderId = 'bloom_order_' + Date.now();
-      const updatedOrders = [{ id: offlineOrderId, ...newOrder }, ...receivedOrders];
-      setReceivedOrders(updatedOrders);
-      localStorage.setItem('bloom_orders_v2', JSON.stringify(updatedOrders));
-      setCurrentOrderId(offlineOrderId);
-      triggerNotification(t.alertOrderOffline);
-    }
+    const total = cart.reduce((s,i)=> s + i.price*i.quantity, 0);
 
-    setCart([]);
-    setActiveTab('orders');
-  };
-
-  // 4. 后台操作
-  const handleAdminLogin = (e) => {
-    e.preventDefault();
-    if (adminPasswordInput === '761025') {
-      setIsAdminLoggedIn(true);
-      setPasswordError('');
-      triggerNotification('Welcome to BLOOM Boss Dashboard!');
-    } else {
-      setPasswordError(t.alertWrongPassword);
-    }
-  };
-
-  // 照片本地上传处理 (已升级为高稳状态和事件自愈机制)
-  const handleLocalImageUpload = (e) => {
-    const file = e.target.files[0];
-    if (!file) return;
-
-    // 限制在 2.5MB 以下
-    if (file.size > 2.5 * 1024 * 1024) { 
-      triggerNotification(t.imageTooBig, 'error');
-      // 即使不符合大小也重置，允许用户再次点选
-      e.target.value = '';
-      return;
-    }
-
-    const reader = new FileReader();
-    reader.onload = (event) => {
-      const base64Data = event.target.result;
-      setFormData(prev => ({ ...prev, img: base64Data }));
-      triggerNotification(t.imageLoaded);
+    const submitOrder = () => {
+        if(cart.length===0) return;
+        const newOrder = { id: Date.now().toString(), code: '#'+Math.floor(1000+Math.random()*9000), items: [...cart], total: total, status: '已下单', time: Date.now() };
+        setOrders([newOrder, ...orders]);
+        setCurrentOrderId(newOrder.id);
+        setCart([]);
+        setTab('orders');
+        showMsg('✅ 下单成功！');
     };
 
-    reader.onerror = () => {
-      triggerNotification(t.imageReadError, 'error');
+    const updateStatus = (id, status) => {
+        setOrders(orders.map(o => o.id===id ? {...o, status} : o));
+        showMsg('状态已更新');
     };
 
-    reader.readAsDataURL(file);
-
-    // 【核心修复】：在读取完之后重置 input 的 value
-    // 这样当用户重新选择同一张或者其他照片时，onChange 总是会被 100% 稳定触发
-    e.target.value = '';
-  };
-
-  // 保存或编辑菜品
-  const handleSaveItem = async (e) => {
-    e.preventDefault();
-    if (!formData.name_zh || !formData.name_en || !formData.name_es || !formData.price) {
-      triggerNotification(t.alertFillRequired, 'error');
-      return;
-    }
-
-    const itemData = {
-      name_zh: formData.name_zh,
-      name_en: formData.name_en,
-      name_es: formData.name_es,
-      price: parseFloat(formData.price),
-      category: formData.category,
-      desc_zh: formData.desc_zh || '美味推荐，不容错过。',
-      desc_en: formData.desc_en || 'Delicious food recommendation.',
-      desc_es: formData.desc_es || 'Recomendación gastronómica deliciosa.',
-      img: formData.img || FOOD_TEMPLATES[0].url
+    const deleteDish = (item) => {
+        if(confirm(t.confirmDel)) { setMenu(menu.filter(m => m.id !== item.id)); showMsg(t.success); }
     };
 
-    if (editingItem) {
-      if (isFirebaseEnabled && db) {
-        await setDoc(doc(db, 'artifacts', appId, 'public', 'data', 'menu', editingItem.id), itemData, { merge: true });
-      } else {
-        const updatedList = menuItems.map(item => item.id === editingItem.id ? { ...item, ...itemData } : item);
-        setMenuItems(updatedList);
-        localStorage.setItem('bloom_menu_items_v2', JSON.stringify(updatedList));
-      }
-      triggerNotification(t.alertEditSuccess);
-    } else {
-      const newId = 'bloom_dish_' + Date.now();
-      const newItem = { id: newId, ...itemData };
+    const saveDish = (e) => {
+        e.preventDefault();
+        if(!form.name_zh || !form.name_en || !form.name_es || !form.price) { showMsg('请填写完整'); return; }
+        const newItem = {
+            id: editing ? editing.id : Date.now().toString(),
+            name_zh: form.name_zh, name_en: form.name_en, name_es: form.name_es,
+            price: parseFloat(form.price), category: form.category,
+            desc_zh: form.desc_zh || '美味', desc_en: form.desc_en || 'Delicious', desc_es: form.desc_es || 'Delicioso',
+            img: form.img || TEMPLATES[0]
+        };
+        if(editing) setMenu(menu.map(m => m.id===editing.id ? newItem : m));
+        else setMenu([...menu, newItem]);
+        setForm({ name_zh:'', name_en:'', name_es:'', price:'', category:'饭类', desc_zh:'', desc_en:'', desc_es:'', img:'' });
+        setEditing(null);
+        showMsg(t.success);
+    };
 
-      if (isFirebaseEnabled && db) {
-        await setDoc(doc(db, 'artifacts', appId, 'public', 'data', 'menu', newId), newItem);
-      } else {
-        const updatedList = [...menuItems, newItem];
-        setMenuItems(updatedList);
-        localStorage.setItem('bloom_menu_items_v2', JSON.stringify(updatedList));
-      }
-      triggerNotification(t.alertAddSuccess);
-    }
+    const uploadImage = (e) => {
+        const file = e.target.files[0];
+        if(file && file.size < 2.5*1024*1024) {
+            const reader = new FileReader();
+            reader.onload = ev => setForm({...form, img: ev.target.result});
+            reader.readAsDataURL(file);
+        } else showMsg('图片太大，限2.5MB');
+        e.target.value = '';
+    };
 
-    // 重置表单
-    setFormData({ name_zh: '', name_en: '', name_es: '', price: '', category: '饭类', desc_zh: '', desc_en: '', desc_es: '', img: '' });
-    setEditingItem(null);
-  };
+    const categories = ['全部', '饭类', '面类', '寿司', '亚洲小吃', '甜点', '饮品'];
+    const catMap = { '全部':t.all, '饭类':t.rice, '面类':t.noodles, '寿司':t.sushi, '亚洲小吃':t.snacks, '甜点':t.desserts, '饮品':t.drinks };
+    const filtered = category==='全部' ? menu : menu.filter(m => m.category===category);
 
-  // 后台删除菜品
-  const handleDeleteItem = async (item) => {
-    if (!confirm(t.alertDeleteConfirm)) return;
-
-    if (isFirebaseEnabled && db) {
-      await deleteDoc(doc(db, 'artifacts', appId, 'public', 'data', 'menu', item.id));
-    } else {
-      const updatedList = menuItems.filter(mi => mi.id !== item.id);
-      setMenuItems(updatedList);
-      localStorage.setItem('bloom_menu_items_v2', JSON.stringify(updatedList));
-    }
-    triggerNotification(t.alertDeleteSuccess);
-  };
-
-  // 后台修改订单状态
-  const handleUpdateOrderStatus = async (orderId, newStatus) => {
-    if (isFirebaseEnabled && db) {
-      await updateDoc(doc(db, 'artifacts', appId, 'public', 'data', 'orders', orderId), { status: newStatus });
-    } else {
-      const updatedOrders = receivedOrders.map(o => o.id === orderId ? { ...o, status: newStatus } : o);
-      setReceivedOrders(updatedOrders);
-      localStorage.setItem('bloom_orders_v2', JSON.stringify(updatedOrders));
-    }
-    triggerNotification(`${t.alertStatusUpdated} -> ${newStatus}`);
-  };
-
-  // 6大分类转换器 (飯类、面类、寿司、亚洲小吃、甜点、饮品)
-  const categoriesList = ['全部', '饭类', '面类', '寿司', '亚洲小吃', '甜点', '饮品'];
-  
-  const categoriesMap = {
-    '全部': t.all,
-    '饭类': t.rice,
-    '面类': t.noodles,
-    '寿司': t.sushi,
-    '亚洲小吃': t.snacks,
-    '甜点': t.desserts,
-    '饮品': t.drinks
-  };
-
-  const getLocalizedName = (item) => {
-    if (lang === 'zh') return item.name_zh || item.name;
-    if (lang === 'en') return item.name_en || item.name;
-    return item.name_es || item.name;
-  };
-
-  const getLocalizedDesc = (item) => {
-    if (lang === 'zh') return item.desc_zh || item.desc;
-    if (lang === 'en') return item.desc_en || item.desc;
-    return item.desc_es || item.desc;
-  };
-
-  const filteredMenuItems = currentCategory === '全部' 
-    ? menuItems 
-    : menuItems.filter(item => item.category === currentCategory);
-
-  return (
-    <div className="min-h-screen bg-[#fcf9f5] text-stone-800 flex flex-col font-sans selection:bg-[#c5a880]/30">
-      
-      {/* 顶部全局提示 */}
-      {showNotification && (
-        <div className="fixed top-6 left-1/2 transform -translate-x-1/2 z-50 px-6 py-3 rounded-full shadow-xl bg-[#8c7355] text-white text-sm font-semibold flex items-center gap-2 transition-all duration-300">
-          <span>✨</span>
-          {showNotification.message}
-        </div>
-      )}
-
-      {/* 顶部导航 */}
-      <header className="sticky top-0 z-40 bg-white/95 backdrop-blur-md border-b border-[#ebdcd0] shadow-sm">
-        <div className="max-w-4xl mx-auto px-4 py-3 flex items-center justify-between">
-          
-          {/* Logo 区域 */}
-          <div className="flex items-center gap-2.5">
-            <svg className="w-14 h-14" viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg">
-              <path d="M15,52 C15,68 35,74 50,74 C65,74 85,68 85,52 C85,50 15,50 15,52 Z" stroke="#b69575" strokeWidth="4.5" strokeLinecap="round" strokeLinejoin="round" fill="#fff" />
-              <path d="M35,74 C38,82 43,86 50,86 C57,86 62,82 65,74" stroke="#b69575" strokeWidth="4.5" strokeLinecap="round" fill="none" />
-              <circle cx="30" cy="56" r="3.5" fill="#f5c767" />
-              <rect x="52" y="55" width="8" height="8" rx="2" fill="#e28c77" transform="rotate(15 52 55)" />
-              <circle cx="44" cy="58" r="2" fill="#444" />
-              <circle cx="68" cy="57" r="1.5" fill="#444" />
-              <circle cx="62" cy="53" r="3" fill="#ebd7cc" />
-              <path d="M52,25 C45,28 30,41 27,45 C24,49 28,53 33,52 C38,51 47,40 54,34 C58,31 62,31 61,26 C60,21 56,23 52,25 Z" fill="#b69575" />
-              <path d="M48,28 C45,30 36,39 31,44" stroke="#fff" strokeWidth="2" strokeLinecap="round" />
-            </svg>
-
-            <div className="flex flex-col">
-              <span className="text-xl font-extrabold text-[#8c7355] tracking-wider leading-none">BLOOM</span>
-              <span className="text-xs font-semibold text-[#a68c6d] tracking-widest mt-1">绽里 • {t.subtitle}</span>
-            </div>
-          </div>
-          
-          {/* 右侧功能栏 */}
-          <div className="flex items-center gap-2">
+    return (
+        <div className="min-h-screen bg-[#fcf9f5] pb-24">
+            {msg && <div className="fixed top-5 left-1/2 -translate-x-1/2 bg-[#8c7355] text-white px-5 py-2 rounded-full text-sm z-50 shadow-lg">{msg}</div>}
             
-            {/* 三语切换 */}
-            <div className="relative inline-flex bg-[#f5ebe2] p-0.5 rounded-lg border border-[#ebdcd0]">
-              {['zh', 'en', 'es'].map((language) => (
-                <button
-                  key={language}
-                  onClick={() => {
-                    setLang(language);
-                    triggerNotification(`Language: ${language.toUpperCase()}`);
-                  }}
-                  className={`px-2 py-1 text-[10px] sm:text-xs font-bold rounded-md transition-all ${
-                    lang === language 
-                      ? 'bg-[#8c7355] text-white shadow-sm' 
-                      : 'text-stone-600 hover:text-stone-900'
-                  }`}
-                >
-                  {language.toUpperCase()}
-                </button>
-              ))}
-            </div>
-
-            {/* 老板后台切换 */}
-            <button
-              onClick={() => setActiveTab(activeTab === 'admin' ? 'menu' : 'admin')}
-              className="flex items-center gap-1 text-[10px] sm:text-xs font-bold px-2.5 py-1.5 sm:px-3 sm:py-2 rounded-lg border border-[#c5a880] text-[#8c7355] hover:bg-[#fcfaf7] transition-all"
-            >
-              {activeTab === 'admin' ? `👈 ${t.backToMenu}` : `🗝️ ${t.adminPortal}`}
-            </button>
-
-          </div>
-        </div>
-      </header>
-
-      {/* 主视图 */}
-      <main className="flex-grow max-w-4xl w-full mx-auto px-4 py-6 pb-28">
-
-        {/* ==========================================
-            顾客点餐视图
-            ========================================== */}
-        {activeTab === 'menu' && (
-          <div className="space-y-6">
-            
-            {/* 温馨手绘风 Banner */}
-            <div className="relative rounded-2xl overflow-hidden shadow-sm bg-gradient-to-r from-[#b5967a] to-[#8c7355] text-white p-6 sm:p-8">
-              <div className="relative z-10 max-w-md space-y-2.5">
-                <span className="bg-[#ebdcd0] text-[#5e4c36] text-[10px] px-2.5 py-1 rounded-full font-bold uppercase tracking-wider">
-                  {t.todaySpecial}
-                </span>
-                <h2 className="text-2xl sm:text-3xl font-extrabold">{t.bannerTitle}</h2>
-                <p className="text-xs text-stone-100 leading-relaxed">{t.bannerDesc}</p>
-              </div>
-              <div className="absolute right-2 bottom-2 opacity-15 text-9xl select-none translate-x-12 translate-y-12">🍲</div>
-            </div>
-
-            {/* 分类滑块选择器 */}
-            <div className="flex gap-2 overflow-x-auto pb-1 scrollbar-none">
-              {categoriesList.map(cat => (
-                <button
-                  key={cat}
-                  onClick={() => setCurrentCategory(cat)}
-                  className={`px-5 py-2.5 rounded-full font-bold text-xs whitespace-nowrap transition-all ${
-                    currentCategory === cat
-                      ? 'bg-[#8c7355] text-white shadow-md shadow-[#8c7355]/20'
-                      : 'bg-white text-stone-600 border border-stone-100 hover:bg-stone-50'
-                  }`}
-                >
-                  {categoriesMap[cat]}
-                </button>
-              ))}
-            </div>
-
-            {/* 菜品展示格 */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              {filteredMenuItems.map(item => (
-                <div key={item.id} className="bg-white rounded-2xl overflow-hidden border border-[#ebdcd0]/40 shadow-sm hover:shadow-md transition-all flex h-32">
-                  <img
-                    src={item.img}
-                    alt={getLocalizedName(item)}
-                    className="w-32 h-full object-cover bg-stone-100 flex-shrink-0"
-                    onError={(e) => { e.target.src = 'https://images.unsplash.com/photo-1546069901-ba9599a7e63c?w=400'; }}
-                  />
-                  <div className="p-3.5 flex flex-col justify-between flex-grow overflow-hidden">
-                    <div className="space-y-1">
-                      <div className="flex justify-between items-start">
-                        <h3 className="font-bold text-stone-950 truncate pr-2 text-sm sm:text-base">{getLocalizedName(item)}</h3>
-                        <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-[#f5ebe2] text-[#8c7355] flex-shrink-0">
-                          {categoriesMap[item.category] || item.category}
-                        </span>
-                      </div>
-                      <p className="text-[11px] text-stone-500 line-clamp-2 leading-relaxed">{getLocalizedDesc(item)}</p>
-                    </div>
-                    <div className="flex justify-between items-center pt-1">
-                      <span className="text-base font-extrabold text-[#8c7355]">${item.price.toFixed(2)}</span>
-                      <button
-                        onClick={() => addToCart(item)}
-                        className="bg-[#8c7355] hover:bg-[#735e45] text-white font-extrabold px-3 py-1.5 rounded-lg text-xs flex items-center gap-1 transition-all"
-                      >
-                        <span>＋</span>
-                        {t.addToCart}
-                      </button>
-                    </div>
-                  </div>
+            <header className="sticky top-0 bg-white/95 backdrop-blur border-b px-4 py-3 flex justify-between items-center max-w-4xl mx-auto">
+                <div className="flex items-center gap-2">
+                    <span className="text-2xl font-bold text-[#8c7355]">BLOOM</span>
+                    <span className="text-xs text-stone-400">绽里</span>
                 </div>
-              ))}
-            </div>
+                <div className="flex gap-2">
+                    <div className="flex bg-stone-100 rounded-lg text-xs">
+                        {['zh','en','es'].map(l => <button key={l} onClick={()=>setLang(l)} className={`px-2 py-1 rounded ${lang===l?'bg-[#8c7355] text-white':'text-stone-600'}`}>{l.toUpperCase()}</button>)}
+                    </div>
+                    <button onClick={()=>setTab(tab==='admin'?'menu':'admin')} className="text-xs border border-[#c5a880] px-3 py-1 rounded-lg text-[#8c7355]">{tab==='admin'?t.back:t.admin}</button>
+                </div>
+            </header>
 
-            {filteredMenuItems.length === 0 && (
-              <div className="text-center py-16 text-stone-400">
-                <span className="text-5xl">🥣</span>
-                <p className="mt-3 text-xs">{t.emptyCategory}</p>
-              </div>
-            )}
-
-          </div>
-        )}
-
-        {/* ==========================================
-            订单状态进度视图
-            ========================================== */}
-        {activeTab === 'orders' && (
-          <div className="space-y-6">
-            <h2 className="text-lg font-bold text-stone-900 flex items-center gap-2">
-              <span>📋</span> {t.orderStatus}
-            </h2>
-
-            {currentOrderId ? (
-              <div className="bg-white p-6 rounded-2xl border border-[#ebdcd0]/60 shadow-sm space-y-6">
-                {(() => {
-                  const currentOrder = receivedOrders.find(o => o.id === currentOrderId);
-                  if (!currentOrder) return <p className="text-center text-stone-400 text-xs">Loading...</p>;
-                  
-                  const statuses = ['已下单', '制作中', '已送达'];
-                  const statusesLocale = [t.orderStatus1, t.orderStatus2, t.orderStatus3];
-                  const currentIndex = statuses.indexOf(currentOrder.status);
-
-                  return (
+            <main className="max-w-4xl mx-auto px-4 py-5">
+            {tab === 'menu' && (
                     <>
-                      <div className="flex justify-between items-center bg-[#fcf9f5] p-4 rounded-xl border border-[#ebdcd0]/30">
-                        <div>
-                          <p className="text-[10px] text-stone-400">ID: {currentOrder.id}</p>
-                          <p className="text-sm font-bold text-[#8c7355] mt-1">{t.orderNo}: <strong className="text-stone-900">{currentOrder.orderCode || currentOrder.id}</strong></p>
+                        <div className="bg-gradient-to-r from-[#b5967a] to-[#8c7355] text-white p-6 rounded-2xl mb-6">
+                            <span className="bg-white/20 text-xs px-3 py-1 rounded-full">✨ 今日推荐</span>
+                            <h2 className="text-2xl font-bold mt-2">BLOOM 绽里</h2>
+                            <p className="text-sm opacity-90">匠心熬制，温暖每一餐</p>
                         </div>
-                        <span className="px-3.5 py-1 bg-[#8c7355] text-white text-xs font-bold rounded-full">
-                          {statusesLocale[currentIndex] || currentOrder.status}
-                        </span>
-                      </div>
-
-                      {/* 进度轨道 */}
-                      <div className="flex items-center justify-between px-6 py-4">
-                        {statuses.map((status, index) => (
-                          <React.Fragment key={status}>
-                            <div className="flex flex-col items-center gap-2">
-                              <div className={`w-9 h-9 rounded-full flex items-center justify-center font-bold text-xs ${
-                                index <= currentIndex ? 'bg-[#8c7355] text-white' : 'bg-stone-100 text-stone-400'
-                              }`}>
-                                {index + 1}
-                              </div>
-                              <span className={`text-[11px] font-bold ${index <= currentIndex ? 'text-[#8c7355]' : 'text-stone-400'}`}>
-                                {statusesLocale[index]}
-                              </span>
-                            </div>
-                            {index < statuses.length - 1 && (
-                              <div className={`flex-grow h-1 mx-2 rounded ${index < currentIndex ? 'bg-[#8c7355]' : 'bg-stone-100'}`} />
-                            )}
-                          </React.Fragment>
-                        ))}
-                      </div>
-
-                      {/* 订单明细清单 */}
-                      <div className="border-t border-stone-100 pt-4 space-y-3">
-                        <h4 className="font-bold text-xs text-stone-700">{t.myOrders}</h4>
-                        {currentOrder.items.map(item => (
-                          <div key={item.id} className="flex justify-between text-xs text-stone-600">
-                            <span>{getLocalizedName(item)} <span className="text-[10px] text-stone-400">x{item.quantity}</span></span>
-                            <span>${(item.price * item.quantity).toFixed(2)}</span>
-                          </div>
-                        ))}
-                        <div className="flex justify-between font-extrabold text-sm text-stone-900 border-t border-dashed border-stone-100 pt-3">
-                          <span>{t.total}</span>
-                          <span className="text-[#8c7355] text-base">${currentOrder.totalPrice.toFixed(2)}</span>
+                        
+                        <div className="flex gap-2 overflow-x-auto pb-3 mb-4">
+                            {categories.map(c => <button key={c} onClick={()=>setCategory(c)} className={`px-4 py-2 rounded-full text-xs font-bold whitespace-nowrap ${category===c ? 'bg-[#8c7355] text-white' : 'bg-white text-stone-600 border'}`}>{catMap[c]}</button>)}
                         </div>
-                      </div>
-                    </>
-                  );
-                })()}
-              </div>
-            ) : (
-              <div className="text-center py-20 bg-white rounded-2xl border border-[#ebdcd0]/30 shadow-sm text-stone-400 space-y-4">
-                <span className="text-6xl">🍲</span>
-                <p className="text-xs">{t.noOrders}</p>
-                <button 
-                  onClick={() => setActiveTab('menu')}
-                  className="px-6 py-2.5 bg-[#8c7355] hover:bg-[#735e45] text-white font-bold rounded-full text-xs transition-all"
-                >
-                  {t.customerMenu}
-                </button>
-              </div>
-            )}
-          </div>
-        )}
-
-        {/* ==========================================
-            老板管理后台 (专属新密码: 761025)
-            ========================================== */}
-        {activeTab === 'admin' && (
-          <div className="space-y-6">
-            
-            {!isAdminLoggedIn ? (
-              /* 登录表单 */
-              <div className="max-w-md mx-auto bg-white p-6 rounded-2xl border border-[#ebdcd0] shadow-sm">
-                <div className="text-center space-y-2">
-                  <span className="text-4xl">🔐</span>
-                  <h3 className="text-lg font-bold text-stone-900">{t.adminLoginTitle}</h3>
-                  <p className="text-xs text-stone-500 leading-relaxed">{t.adminLoginDesc}</p>
-                </div>
-                <form onSubmit={handleAdminLogin} className="mt-6 space-y-4">
-                  <div>
-                    <label className="block text-xs font-bold text-stone-600 mb-1.5">{t.passwordLabel}</label>
-                    <input
-                      type="password"
-                      value={adminPasswordInput}
-                      onChange={(e) => setAdminPasswordInput(e.target.value)}
-                      placeholder={t.passwordPlaceholder}
-                      className="w-full px-4 py-2.5 rounded-xl border border-stone-200 focus:ring-2 focus:ring-[#8c7355]/20 focus:border-[#8c7355] outline-none text-center font-bold"
-                    />
-                    {passwordError && <p className="text-red-500 text-xs mt-1.5 text-center">{passwordError}</p>}
-                  </div>
-                  <button
-                    type="submit"
-                    className="w-full py-2.5 bg-[#8c7355] hover:bg-[#735e45] text-white font-bold rounded-xl text-xs transition-all"
-                  >
-                    {t.unlockBtn}
-                  </button>
-                </form>
-              </div>
-            ) : (
-              /* 管理控制台面板 */
-              <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                
-                {/* 1. 添加及编辑菜品单侧表单 */}
-                <div className="lg:col-span-1 bg-white p-5 rounded-xl border border-[#ebdcd0] shadow-sm space-y-4 self-start">
-                  <div className="flex justify-between items-center pb-2 border-b border-stone-100">
-                    <h3 className="font-bold text-stone-900 text-xs">
-                      {editingItem ? `✏️ ${t.editDish}` : `➕ ${t.addDish}`}
-                    </h3>
-                    {editingItem && (
-                      <button
-                        onClick={() => {
-                          setEditingItem(null);
-                          setFormData({ name_zh: '', name_en: '', name_es: '', price: '', category: '饭类', desc_zh: '', desc_en: '', desc_es: '', img: '' });
-                        }}
-                        className="text-[10px] text-[#8c7355] font-bold hover:underline"
-                      >
-                        {t.cancelEdit}
-                      </button>
-                    )}
-                  </div>
-
-                  <form onSubmit={handleSaveItem} className="space-y-3 text-xs">
-                    {/* 三语命名项 */}
-                    <div>
-                      <label className="block font-bold text-stone-700 mb-1">{t.dishNameZh}</label>
-                      <input
-                        type="text"
-                        required
-                        value={formData.name_zh}
-                        onChange={(e) => setFormData(prev => ({ ...prev, name_zh: e.target.value }))}
-                        placeholder="例如：温泉蛋牛肉饭"
-                        className="w-full px-3 py-2 rounded-lg border border-stone-200 focus:ring-1 focus:ring-[#8c7355] outline-none"
-                      />
-                    </div>
-                    <div>
-                      <label className="block font-bold text-stone-700 mb-1">{t.dishNameEn}</label>
-                      <input
-                        type="text"
-                        required
-                        value={formData.name_en}
-                        onChange={(e) => setFormData(prev => ({ ...prev, name_en: e.target.value }))}
-                        placeholder="E.g. Wagyu Beef Rice"
-                        className="w-full px-3 py-2 rounded-lg border border-stone-200 focus:ring-1 focus:ring-[#8c7355] outline-none"
-                      />
-                    </div>
-                    <div>
-                      <label className="block font-bold text-stone-700 mb-1">{t.dishNameEs}</label>
-                      <input
-                        type="text"
-                        required
-                        value={formData.name_es}
-                        onChange={(e) => setFormData(prev => ({ ...prev, name_es: e.target.value }))}
-                        placeholder="Ej. Arroz con Ternera"
-                        className="w-full px-3 py-2 rounded-lg border border-stone-200 focus:ring-1 focus:ring-[#8c7355] outline-none"
-                      />
-                    </div>
-
-                    <div className="grid grid-cols-2 gap-2">
-                      <div>
-                        <label className="block font-bold text-stone-700 mb-1">{t.price}</label>
-                        <input
-                          type="number"
-                          step="0.01"
-                          required
-                          value={formData.price}
-                          onChange={(e) => setFormData(prev => ({ ...prev, price: e.target.value }))}
-                          placeholder="元"
-                          className="w-full px-3 py-2 rounded-lg border border-stone-200 focus:ring-1 focus:ring-[#8c7355] outline-none"
-                        />
-                      </div>
-                      <div>
-                        <label className="block font-bold text-stone-700 mb-1">{t.category}</label>
-                        <select
-                          value={formData.category}
-                          onChange={(e) => setFormData(prev => ({ ...prev, category: e.target.value }))}
-                          className="w-full px-3 py-2 rounded-lg border border-stone-200 bg-white focus:ring-1 focus:ring-[#8c7355] outline-none"
-                        >
-                          <option value="饭类">{t.rice}</option>
-                          <option value="面类">{t.noodles}</option>
-                          <option value="寿司">{t.sushi}</option>
-                          <option value="亚洲小吃">{t.snacks}</option>
-                          <option value="甜点">{t.desserts}</option>
-                          <option value="饮品">{t.drinks}</option>
-                        </select>
-                      </div>
-                    </div>
-
-                    {/* 三语描述 */}
-                    <div>
-                      <label className="block font-bold text-stone-700 mb-1">{t.descZh}</label>
-                      <textarea
-                        value={formData.desc_zh}
-                        onChange={(e) => setFormData(prev => ({ ...prev, desc_zh: e.target.value }))}
-                        placeholder="中文菜品介绍"
-                        rows="1"
-                        className="w-full px-3 py-1.5 rounded-lg border border-stone-200 focus:ring-1 focus:ring-[#8c7355] outline-none"
-                      />
-                    </div>
-                    <div>
-                      <label className="block font-bold text-stone-700 mb-1">{t.descEn}</label>
-                      <textarea
-                        value={formData.desc_en}
-                        onChange={(e) => setFormData(prev => ({ ...prev, desc_en: e.target.value }))}
-                        placeholder="English description"
-                        rows="1"
-                        className="w-full px-3 py-1.5 rounded-lg border border-stone-200 focus:ring-1 focus:ring-[#8c7355] outline-none"
-                      />
-                    </div>
-                    <div>
-                      <label className="block font-bold text-stone-700 mb-1">{t.descEs}</label>
-                      <textarea
-                        value={formData.desc_es}
-                        onChange={(e) => setFormData(prev => ({ ...prev, desc_es: e.target.value }))}
-                        placeholder="Descripción en español"
-                        rows="1"
-                        className="w-full px-3 py-1.5 rounded-lg border border-stone-200 focus:ring-1 focus:ring-[#8c7355] outline-none"
-                      />
-                    </div>
-
-                    {/* 照片选择/上传 */}
-                    <div className="space-y-1.5 pt-1">
-                      <label className="block font-bold text-stone-700">{t.photoLabel}</label>
-                      
-                      {/* 上传本地文件 (已通过 e.target.value = '' 彻底自愈：支持重复传相同图、大图拦截及加载中通知) */}
-                      <div className="border border-dashed border-stone-300 rounded-lg p-2 text-center bg-stone-50 hover:bg-stone-100 transition-all relative">
-                        <input
-                          type="file"
-                          accept="image/*"
-                          onChange={handleLocalImageUpload}
-                          className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10"
-                        />
-                        <span className="text-[10px] text-stone-500 font-semibold pointer-events-none">{t.uploadLocal}</span>
-                      </div>
-
-                      {/* 预设模板 */}
-                      <p className="text-[10px] text-stone-400">{t.useTemplate}</p>
-                      <div className="grid grid-cols-6 gap-1">
-                        {FOOD_TEMPLATES.map(tem => (
-                          <button
-                            key={tem.name}
-                            type="button"
-                            onClick={() => {
-                              setFormData(prev => ({ ...prev, img: tem.url }));
-                              triggerNotification(t.imageLoaded);
-                            }}
-                            className={`h-7 rounded overflow-hidden border transition-all ${
-                              formData.img === tem.url ? 'border-[#8c7355] scale-105 shadow-sm' : 'border-transparent opacity-80'
-                            }`}
-                          >
-                            <img src={tem.url} className="w-full h-full object-cover" />
-                          </button>
-                        ))}
-                      </div>
-
-                      {/* 预览 */}
-                      {formData.img && (
-                        <div className="border border-stone-100 rounded p-1.5 flex items-center gap-2 mt-1">
-                          <img src={formData.img} className="w-10 h-10 object-cover rounded" />
-                          <span className="text-[9px] text-stone-400 truncate">{t.previewPhoto}</span>
-                        </div>
-                      )}
-                    </div>
-
-                    <button
-                      type="submit"
-                      className="w-full py-2 bg-[#8c7355] hover:bg-[#735e45] text-white font-bold rounded-lg transition-all text-xs"
-                    >
-                      {editingItem ? t.submitEdit : t.submitAdd}
-                    </button>
-                  </form>
-                </div>
-
-                {/* 右侧明细面板 */}
-                <div className="lg:col-span-2 space-y-6">
-                  
-                  {/* 1. 实时餐单订单管理器 */}
-                  <div className="bg-white p-5 rounded-xl border border-[#ebdcd0] shadow-sm space-y-3">
-                    <h3 className="font-bold text-stone-900 text-xs border-b border-stone-100 pb-2">
-                      {t.adminOrderPanel}
-                    </h3>
-                    
-                    <div className="space-y-3 max-h-80 overflow-y-auto scrollbar-thin">
-                      {receivedOrders.map(order => (
-                        <div key={order.id} className="p-3.5 bg-[#fcf9f5] rounded-xl border border-[#ebdcd0]/30 space-y-2 text-xs">
-                          <div className="flex justify-between items-center">
-                            <span className="font-extrabold text-stone-900 text-sm">{t.orderNo}: {order.orderCode || `#${order.id.slice(-4)}`}</span>
-                            <div className="flex items-center gap-2">
-                              <span className={`px-2.5 py-0.5 rounded-full font-bold text-[10px] ${
-                                order.status === '已送达' 
-                                  ? 'bg-green-100 text-green-700' 
-                                  : order.status === '制作中' 
-                                  ? 'bg-amber-100 text-amber-700' 
-                                  : 'bg-orange-100 text-orange-700'
-                              }`}>
-                                {order.status === '已下单' ? t.orderStatus1 : (order.status === '制作中' ? t.orderStatus2 : t.orderStatus3)}
-                              </span>
-                              <span className="text-stone-400 text-[10px]">{new Date(order.timestamp).toLocaleTimeString()}</span>
-                            </div>
-                          </div>
-                          
-                          <div className="text-stone-600 space-y-1">
-                            {order.items.map(it => (
-                              <div key={it.id} className="flex justify-between">
-                                <span>{getLocalizedName(it)} <span className="text-stone-400 font-bold">x{it.quantity}</span></span>
-                                <span>${(it.price * it.quantity).toFixed(2)}</span>
-                              </div>
+                        
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                            {filtered.map(item => (
+                                <div key={item.id} className="bg-white rounded-2xl overflow-hidden shadow-sm flex h-32">
+                                    <img src={item.img} className="w-28 h-full object-cover" onError={e=>e.target.src=TEMPLATES[0]} />
+                                    <div className="p-3 flex-1 flex flex-col justify-between">
+                                        <div>
+                                            <div className="flex justify-between"><h3 className="font-bold text-sm">{getName(item)}</h3><span className="text-[10px] bg-amber-50 px-2 rounded-full">{catMap[item.category]}</span></div>
+                                            <p className="text-[11px] text-stone-500 mt-1 line-clamp-2">{getDesc(item)}</p>
+                                        </div>
+                                        <div className="flex justify-between items-center"><span className="font-bold text-[#8c7355]">${item.price.toFixed(2)}</span><button onClick={()=>addToCart(item)} className="bg-[#8c7355] text-white px-3 py-1 rounded-lg text-xs font-bold">+ {t.add}</button></div>
+                                    </div>
+                                </div>
                             ))}
-                          </div>
-
-                          <div className="flex justify-between items-center border-t border-dashed border-stone-200 pt-2 text-[11px]">
-                            <span className="font-bold text-stone-900">{t.total}: ${(order.totalPrice || 0).toFixed(2)}</span>
-                            <div className="flex gap-1.5">
-                              {order.status === '已下单' && (
-                                <button
-                                  onClick={() => handleUpdateOrderStatus(order.id, '制作中')}
-                                  className="px-2.5 py-1 bg-[#8c7355] hover:bg-[#735e45] text-white rounded font-bold"
-                                >
-                                  {t.startCooking}
-                                </button>
-                              )}
-                              {order.status === '制作中' && (
-                                <button
-                                  onClick={() => handleUpdateOrderStatus(order.id, '已送达')}
-                                  className="px-2.5 py-1 bg-green-600 hover:bg-green-700 text-white rounded font-bold"
-                                >
-                                  {t.markDelivered}
-                                </button>
-                              )}
-                            </div>
-                          </div>
                         </div>
-                      ))}
+                        {filtered.length===0 && <div className="text-center py-20 text-stone-400">{t.noOrders}</div>}
+                    </>
+                )}
 
-                      {receivedOrders.length === 0 && (
-                        <div className="text-center py-8 text-stone-400 text-xs">
-                          {t.emptyOrdersAdmin}
-                        </div>
-                      )}
+                {tab === 'orders' && (
+                    <>
+                        <h2 className="text-xl font-bold mb-4">{t.orders}</h2>
+                        {currentOrderId ? (() => {
+                            const order = orders.find(o => o.id === currentOrderId);
+                            if(!order) return <div className="text-center py-10">Loading...</div>;
+                            const statuses = ['已下单', '制作中', '已送达'];
+                            const statusText = { '已下单':t.ordered, '制作中':t.cooking, '已送达':t.delivered };
+                            const idx = statuses.indexOf(order.status);
+                            return (
+                                <div className="bg-white p-5 rounded-2xl shadow-sm space-y-4">
+                                    <div className="flex justify-between"><span className="font-bold">📋 {order.code}</span><span className="bg-[#8c7355] text-white px-3 py-1 rounded-full text-xs">{statusText[order.status]}</span></div>
+                                    <div className="flex justify-between px-2">{statuses.map((s,i)=><div key={s} className="text-center"><div className={`w-8 h-8 rounded-full flex items-center justify-center text-xs ${i<=idx?'bg-[#8c7355] text-white':'bg-stone-100'}`}>{i+1}</div><span className="text-[10px]">{statusText[s]}</span></div>)}</div>
+                                    <div className="border-t pt-3 space-y-2">{order.items.map(i=><div key={i.id} className="flex justify-between text-sm"><span>{getName(i)} x{i.quantity}</span><span>${(i.price*i.quantity).toFixed(2)}</span></div>)}<div className="flex justify-between font-bold border-t pt-2"><span>{t.total}</span><span>${order.total.toFixed(2)}</span></div></div>
+                                </div>
+                            );
+                        })() : <div className="bg-white rounded-2xl p-10 text-center text-stone-400">{t.noOrders}<button onClick={()=>setTab('menu')} className="block mx-auto mt-4 bg-[#8c7355] text-white px-6 py-2 rounded-full text-sm">{t.menu}</button></div>}
+                    </>
+                )}
+
+                {tab === 'admin' && !admin && (
+                    <div className="max-w-sm mx-auto bg-white p-6 rounded-2xl shadow-sm">
+                        <h3 className="text-center font-bold mb-4">🔐 {t.admin}</h3>
+                        <form onSubmit={(e)=>{e.preventDefault(); if(pwd==='761025'){setAdmin(true);setPwdErr('');}else setPwdErr(t.wrong);}}>
+                            <input type="password" placeholder={t.password} value={pwd} onChange={e=>setPwd(e.target.value)} className="w-full border rounded-xl p-3 mb-3 text-center" />
+                            {pwdErr && <p className="text-red-500 text-xs text-center mb-2">{pwdErr}</p>}
+                            <button type="submit" className="w-full bg-[#8c7355] text-white py-2 rounded-xl">{t.unlock}</button>
+                        </form>
                     </div>
-                  </div>
+                )}
 
-                  {/* 2. 当前已有菜品快捷管理 */}
-                  <div className="bg-white p-5 rounded-xl border border-[#ebdcd0] shadow-sm space-y-3">
-                    <h3 className="font-bold text-stone-900 text-xs border-b border-stone-100 pb-2">
-                      {t.adminDishPanel}
-                    </h3>
-                    
-                    <div className="divide-y divide-stone-100 max-h-96 overflow-y-auto scrollbar-thin">
-                      {menuItems.map(item => (
-                        <div key={item.id} className="py-2.5 flex items-center justify-between gap-4 text-xs">
-                          <div className="flex items-center gap-3">
-                            <img src={item.img} className="w-10 h-10 object-cover rounded-lg border border-stone-100" />
-                            <div>
-                              <p className="font-bold text-stone-950">{getLocalizedName(item)}</p>
-                              <p className="text-[10px] text-stone-400">{categoriesMap[item.category] || item.category}</p>
-                            </div>
-                          </div>
-                          
-                          <div className="flex items-center gap-4">
-                            <span className="font-extrabold text-stone-850">${item.price.toFixed(2)}</span>
-                            <div className="flex gap-2">
-                              <button
-                                onClick={() => {
-                                  setEditingItem(item);
-                                  setFormData({
-                                    name_zh: item.name_zh || '',
-                                    name_en: item.name_en || '',
-                                    name_es: item.name_es || '',
-                                    price: item.price.toString(),
-                                    category: item.category,
-                                    desc_zh: item.desc_zh || '',
-                                    desc_en: item.desc_en || '',
-                                    desc_es: item.desc_es || '',
-                                    img: item.img
-                                  });
-                                }}
-                                className="text-blue-600 hover:underline font-bold"
-                              >
-                                {t.editBtn}
-                              </button>
-                              <button
-                                onClick={() => handleDeleteItem(item)}
-                                className="text-red-600 hover:underline font-bold"
-                              >
-                                {t.removeBtn}
-                              </button>
-                            </div>
-                          </div>
+                {tab === 'admin' && admin && (
+                    <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                        <div className="bg-white p-5 rounded-2xl shadow-sm">
+                            <h3 className="font-bold mb-3">{editing ? t.editDish : t.addDish}</h3>
+                            <form onSubmit={saveDish} className="space-y-3 text-sm">
+                                <input type="text" placeholder={t.nameZh} value={form.name_zh} onChange={e=>setForm({...form,name_zh:e.target.value})} className="w-full border rounded-lg p-2" required />
+                                <input type="text" placeholder={t.nameEn} value={form.name_en} onChange={e=>setForm({...form,name_en:e.target.value})} className="w-full border rounded-lg p-2" required />
+                                <input type="text" placeholder={t.nameEs} value={form.name_es} onChange={e=>setForm({...form,name_es:e.target.value})} className="w-full border rounded-lg p-2" required />
+                                <div className="flex gap-2"><input type="number" step="0.01" placeholder={t.price} value={form.price} onChange={e=>setForm({...form,price:e.target.value})} className="w-1/2 border rounded-lg p-2" required /><select value={form.category} onChange={e=>setForm({...form,category:e.target.value})} className="w-1/2 border rounded-lg p-2"><option>饭类</option><option>面类</option><option>寿司</option><option>亚洲小吃</option><option>甜点</option><option>饮品</option></select></div>
+                                <textarea placeholder={t.nameZh+'描述'} value={form.desc_zh} onChange={e=>setForm({...form,desc_zh:e.target.value})} className="w-full border rounded-lg p-2 text-xs" rows="1" />
+                                <div className="border-dashed border-2 p-2 text-center text-xs relative"><input type="file" accept="image/*" onChange={uploadImage} className="absolute inset-0 opacity-0 cursor-pointer" /><span>{t.upload}</span></div>
+                                <div className="flex gap-1">{TEMPLATES.map((url,i)=><img key={i} src={url} className="w-10 h-10 object-cover rounded cursor-pointer border-2 border-transparent hover:border-[#8c7355]" onClick={()=>setForm({...form,img:url})} />)}</div>
+                                {form.img && <img src={form.img} className="w-16 h-16 object-cover rounded mx-auto" />}
+                                <button type="submit" className="w-full bg-[#8c7355] text-white py-2 rounded-lg">{editing ? t.editDish : t.addDish}</button>
+                                {editing && <button type="button" onClick={()=>{setEditing(null);setForm({name_zh:'',name_en:'',name_es:'',price:'',category:'饭类',desc_zh:'',desc_en:'',desc_es:'',img:''});}} className="w-full border py-2 rounded-lg text-stone-500">取消</button>}
+                            </form>
                         </div>
-                      ))}
+                        
+                        <div className="lg:col-span-2 space-y-5">
+                            <div className="bg-white p-5 rounded-2xl shadow-sm">
+                                <h3 className="font-bold mb-3">📦 {t.orders}</h3>
+                                <div className="space-y-3 max-h-96 overflow-y-auto">
+                                    {orders.map(o => <div key={o.id} className="border-b pb-3"><div className="flex justify-between"><span className="font-bold text-sm">{o.code}</span><span className="text-xs text-stone-500">{new Date(o.time).toLocaleTimeString()}</span></div><div className="text-xs text-stone-600 mt-1">{o.items.map(i=>getName(i)).join(', ')}</div><div className="flex justify-between items-center mt-2"><span className="font-bold">${o.total.toFixed(2)}</span><div>{o.status==='已下单'&&<button onClick={()=>updateStatus(o.id,'制作中')} className="bg-[#8c7355] text-white px-3 py-1 rounded text-xs mr-2">🍳 {t.cooking}</button>}{o.status==='制作中'&&<button onClick={()=>updateStatus(o.id,'已送达')} className="bg-green-600 text-white px-3 py-1 rounded text-xs">✅ {t.delivered}</button>}</div></div></div>)}
+                                    {orders.length===0 && <div className="text-center text-stone-400 py-5">{t.noOrders}</div>}
+                                </div>
+                            </div>
+                            <div className="bg-white p-5 rounded-2xl shadow-sm">
+                                <h3 className="font-bold mb-3">🍽️ {t.menu}</h3>
+                                <div className="divide-y">
+                                    {menu.map(m => <div key={m.id} className="py-2 flex justify-between items-center"><div className="flex items-center gap-3"><img src={m.img} className="w-10 h-10 object-cover rounded" /><span className="text-sm">{getName(m)}</span><span className="text-xs text-stone-400">${m.price}</span></div><div><button onClick={()=>{setEditing(m);setForm({name_zh:m.name_zh,name_en:m.name_en,name_es:m.name_es,price:m.price.toString(),category:m.category,desc_zh:m.desc_zh||'',desc_en:m.desc_en||'',desc_es:m.desc_es||'',img:m.img});}} className="text-blue-500 text-xs mr-3">✏️</button><button onClick={()=>deleteDish(m)} className="text-red-400 text-xs">🗑️</button></div></div>)}
+                                </div>
+                            </div>
+                        </div>
                     </div>
-                  </div>
+                )}
+            </main>
 
+            {tab === 'menu' && cart.length > 0 && (
+                <div className="fixed bottom-0 left-0 right-0 bg-white border-t shadow-lg p-3 flex justify-between items-center max-w-4xl mx-auto">
+                    <div><span className="font-bold text-lg">${total.toFixed(2)}</span><span className="text-xs text-stone-400 ml-2">{cart.reduce((s,i)=>s+i.quantity,0)}件</span></div>
+                    <button onClick={submitOrder} className="bg-[#8c7355] text-white px-6 py-2 rounded-full font-bold">{t.checkout}</button>
                 </div>
-
-              </div>
             )}
-          </div>
-        )}
-
-      </main>
-
-      {/* 底部悬浮购物车 */}
-      {activeTab === 'menu' && cart.length > 0 && (
-        <div className="fixed bottom-16 left-4 right-4 max-w-lg mx-auto bg-stone-950 text-white rounded-full p-2 pl-6 shadow-2xl z-30 flex items-center justify-between animate-fade-in">
-          <div className="flex items-center gap-3">
-            <div className="relative">
-              <span className="text-xl">🛒</span>
-              <span className="absolute -top-1.5 -right-2 bg-[#8c7355] text-white rounded-full w-4.5 h-4.5 flex items-center justify-center text-[10px] font-extrabold animate-bounce">
-                {cart.reduce((sum, item) => sum + item.quantity, 0)}
-              </span>
-            </div>
-            <div>
-              <p className="font-extrabold text-xs">${cartTotal.toFixed(2)}</p>
-              <p className="text-[8px] text-stone-400">BLOOM Fresh Gourmet</p>
-            </div>
-          </div>
-          <button
-            onClick={submitOrder}
-            className="bg-[#8c7355] hover:bg-[#735e45] text-white font-extrabold px-6 py-2 rounded-full text-[11px] transition-all"
-          >
-            {t.checkout}
-          </button>
+            
+            {tab !== 'admin' && (
+                <div className="fixed bottom-0 left-0 right-0 bg-white border-t flex justify-around py-2 max-w-4xl mx-auto">
+                    <button onClick={()=>setTab('menu')} className={`flex flex-col items-center text-xs ${tab==='menu'?'text-[#8c7355]':'text-stone-400'}`}>🍽️ {t.menu}</button>
+                    <button onClick={()=>setTab('orders')} className={`flex flex-col items-center text-xs ${tab==='orders'?'text-[#8c7355]':'text-stone-400'}`}>📋 {t.orders}</button>
+                </div>
+            )}
         </div>
-      )}
+    );
+};
 
-      {/* 底部导航栏 */}
-      {activeTab !== 'admin' && (
-        <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-stone-100 z-20 shadow-lg block">
-          <div className="max-w-md mx-auto flex justify-around py-2">
-            <button
-              onClick={() => setActiveTab('menu')}
-              className={`flex flex-col items-center gap-0.5 text-[10px] font-bold ${activeTab === 'menu' ? 'text-[#8c7355]' : 'text-stone-400'}`}
-            >
-              <span className="text-lg">🍽️</span>
-              <span>{t.customerMenu}</span>
-            </button>
-            <button
-              onClick={() => setActiveTab('orders')}
-              className={`flex flex-col items-center gap-0.5 text-[10px] font-bold ${activeTab === 'orders' ? 'text-[#8c7355]' : 'text-stone-400'}`}
-            >
-              <span className="text-lg">📋</span>
-              <span>{t.myOrders}</span>
-            </button>
-          </div>
-        </div>
-      )}
-
-    </div>
-  );
-}
-
-```
+ReactDOM.createRoot(document.getElementById('root')).render(<App />);
+    </script>
+</body>
+</html>
