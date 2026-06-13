@@ -4,8 +4,8 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=yes">
     <title>BLOOM 绽里点餐系统</title>
-    <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
-    <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+    <script src="https://unpkg.com/react@18/umd/react.development.js"></script>
+    <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
     <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
     <script src="https://cdn.tailwindcss.com"></script>
 </head>
@@ -93,6 +93,7 @@ const DEFAULT_MENU = [
     img: FOOD_TEMPLATES[5].url 
   }
 ];
+
 const TRANSLATIONS = {
   zh: {
     title: "BLOOM 绽里", subtitle: "快捷点餐系统", switchLanguage: "切换语言",
@@ -101,7 +102,7 @@ const TRANSLATIONS = {
     bannerTitle: "BLOOM 绽里 伴您温暖每一餐",
     bannerDesc: "每一碗都是匠心熬制的浓郁滋味，融汇自然本味，绽放舌尖暖意。",
     all: "全部", rice: "饭类", noodles: "面类", sushi: "寿司",
-    snacks: "亚洲小吃", desserts: "甜点", drinks: "饮品",
+    snacks: "亚洲小吃", desserts: "甜点", drinks: "饮品",bbq: "亚洲烧烤",
     addToCart: "添加一份", checkout: "立即下单", emptyCategory: "该分类下暂时没有菜品上架",
     noOrders: "您目前还没有下过单，快去点几道美食吧", orderStatus: "您的订单进度",
     orderStatus1: "已下单", orderStatus2: "制作中", orderStatus3: "已送达",
@@ -115,7 +116,8 @@ const TRANSLATIONS = {
     uploadLocal: "从手机相册上传照片", useTemplate: "或快捷选择精选美食图库：",
     previewPhoto: "当前图片预览", submitAdd: "立即上架", submitEdit: "保存修改",
     cancelEdit: "取消修改", startCooking: "开始做菜", markDelivered: "标记送达",
-    editBtn: "编辑", removeBtn: "下架", total: "共计", emptyOrdersAdmin: "暂无顾客下单，静候新订单中",
+    editBtn: "编辑", removeBtn: "下架", moveUp: "上移",
+moveDown: "下移", total: "共计", emptyOrdersAdmin: "暂无顾客下单，静候新订单中",
     alertOrderSuccess: "下单成功！厨房正在为您加紧制作 👨‍🍳",
     alertOrderOffline: "本地下单成功！👨‍🍳", alertOrderFailed: "网络异常，下单失败",
     alertAddSuccess: "成功上架菜品", alertEditSuccess: "成功保存菜品修改",
@@ -132,7 +134,7 @@ const TRANSLATIONS = {
     bannerTitle: "BLOOM • Warmth in Every Spoon",
     bannerDesc: "Each bowl is crafted with love and natural ingredients.",
     all: "All", rice: "Rice", noodles: "Noodles", sushi: "Sushi",
-    snacks: "Asian Snacks", desserts: "Desserts", drinks: "Drinks",
+    snacks: "Asian Snacks", desserts: "Desserts", drinks: "Drinks",bbq: "Asian BBQ",
     addToCart: "Add to Order", checkout: "Place Order", emptyCategory: "No dishes available.",
     noOrders: "You have not placed any orders yet.", orderStatus: "Your Order Progress",
     orderStatus1: "Ordered", orderStatus2: "Cooking", orderStatus3: "Delivered",
@@ -147,7 +149,8 @@ const TRANSLATIONS = {
     uploadLocal: "Upload from Album", useTemplate: "Or quick-select from library:",
     previewPhoto: "Preview", submitAdd: "Add to Menu", submitEdit: "Save Changes",
     cancelEdit: "Cancel", startCooking: "Start cooking", markDelivered: "Mark Delivered",
-    editBtn: "Edit", removeBtn: "Delete", total: "Total", emptyOrdersAdmin: "No orders yet",
+    editBtn: "Edit", removeBtn: "Delete", moveUp: "Move Up",
+moveDown: "Move Down", total: "Total", emptyOrdersAdmin: "No orders yet",
     alertOrderSuccess: "Ordered successfully! 👨‍🍳", alertOrderOffline: "Order placed locally! 👨‍🍳",
     alertOrderFailed: "Network failed", alertAddSuccess: "Dish added",
     alertEditSuccess: "Dish saved", alertDeleteConfirm: "Delete this dish?",
@@ -163,7 +166,7 @@ const TRANSLATIONS = {
     bannerTitle: "BLOOM • Calidez en Cada Plato",
     bannerDesc: "Cada tazón se elabora artesanalmente.",
     all: "Todos", rice: "Arroz", noodles: "Fideos", sushi: "Sushi",
-    snacks: "Snacks", desserts: "Postres", drinks: "Bebidas",
+    snacks: "Snacks Asiático", desserts: "Postres", drinks: "Bebidas",bbq: "Barbacoa Asiática",
     addToCart: "Pedir", checkout: "Confirmar", emptyCategory: "No hay platos.",
     noOrders: "Aún no ha realizado ningún pedido.", orderStatus: "Estado del Pedido",
     orderStatus1: "Recibido", orderStatus2: "En Cocina", orderStatus3: "Entregado",
@@ -178,7 +181,8 @@ const TRANSLATIONS = {
     uploadLocal: "Subir desde Galería", useTemplate: "O elija de biblioteca:",
     previewPhoto: "Vista Previa", submitAdd: "Añadir", submitEdit: "Guardar",
     cancelEdit: "Cancelar", startCooking: "Cocinar", markDelivered: "Entregar",
-    editBtn: "Editar", removeBtn: "Eliminar", total: "Total", emptyOrdersAdmin: "Sin pedidos",
+    editBtn: "Editar", removeBtn: "Eliminar", moveUp: "Subir",
+moveDown: "Bajar", total: "Total", emptyOrdersAdmin: "Sin pedidos",
     alertOrderSuccess: "¡Pedido confirmado! 👨‍🍳", alertOrderOffline: "¡Pedido local! 👨‍🍳",
     alertOrderFailed: "Error de red", alertAddSuccess: "Plato añadido",
     alertEditSuccess: "Plato actualizado", alertDeleteConfirm: "¿Eliminar este plato?",
@@ -188,6 +192,7 @@ const TRANSLATIONS = {
     imageReadError: "❌ Error al leer"
   }
 };
+
 function App() {
   const [lang, setLang] = React.useState('zh');
   const t = TRANSLATIONS[lang];
@@ -239,7 +244,6 @@ function App() {
   const cartTotal = cart.reduce((total, item) => total + (item.price * item.quantity), 0);
 
   const submitOrder = () => {
-  
     if (cart.length === 0) return;
     const randomOrderId = Math.floor(1000 + Math.random() * 9000);
     const newOrder = {
@@ -257,6 +261,35 @@ function App() {
     setActiveTab('orders');
   };
 
+  const handleUpdateOrderStatus = (orderId, newStatus) => {
+    const updatedOrders = receivedOrders.map(order => 
+      order.id === orderId ? { ...order, status: newStatus } : order
+    );
+    setReceivedOrders(updatedOrders);
+    triggerNotification(t.alertStatusUpdated);
+  };
+
+  const handleDeleteItem = (item) => {
+  const moveItem = (index, direction) => {
+  const newMenu = [...menuItems];
+  const newIndex = direction === 'up' ? index - 1 : index + 1;
+  if (newIndex < 0 || newIndex >= newMenu.length) return;
+  [newMenu[index], newMenu[newIndex]] = [newMenu[newIndex], newMenu[index]];
+  setMenuItems(newMenu);
+  triggerNotification(direction === 'up' ? '已上移' : '已下移');
+};
+    if (window.confirm(t.alertDeleteConfirm)) {
+      setMenuItems(menuItems.filter(i => i.id !== item.id));
+      triggerNotification(t.alertDeleteSuccess);
+    }
+  };
+const moveItem = (index, direction) => {
+  const newMenu = [...menuItems];
+  const newIndex = direction === 'up' ? index - 1 : index + 1;
+  if (newIndex < 0 || newIndex >= newMenu.length) return;
+  [newMenu[index], newMenu[newIndex]] = [newMenu[newIndex], newMenu[index]];
+  setMenuItems(newMenu);
+};
   const handleAdminLogin = (e) => {
     e.preventDefault();
     if (adminPasswordInput === '761025') {
@@ -268,23 +301,26 @@ function App() {
     }
   };
 
+
+
   const handleLocalImageUpload = (e) => {
-    const file = e.target.files[0];
-    if (!file) return;
-    if (file.size > 2.5 * 1024 * 1024) { 
-      triggerNotification(t.imageTooBig, 'error');
-      e.target.value = '';
-      return;
-    }
-    const reader = new FileReader();
-    reader.onload = (event) => {
-      setFormData(prev => ({ ...prev, img: event.target.result }));
-      triggerNotification(t.imageLoaded);
-    };
-    reader.onerror = () => triggerNotification(t.imageReadError, 'error');
-    reader.readAsDataURL(file);
+  const file = e.target.files[0];
+  if (!file) return;
+  
+  if (file.size > 2.5 * 1024 * 1024) {
+    alert('图片太大');
     e.target.value = '';
+    return;
+  }
+  
+  const reader = new FileReader();
+  reader.onload = (event) => {
+    setFormData({ ...formData, img: event.target.result });
+    alert('图片加载成功');
   };
+  reader.readAsDataURL(file);
+  e.target.value = '';
+};
 
   const handleSaveItem = (e) => {
     e.preventDefault();
@@ -292,162 +328,201 @@ function App() {
       triggerNotification(t.alertFillRequired, 'error');
       return;
     }
-    const itemData = {
-      name_zh: formData.name_zh, name_en: formData.name_en, name_es: formData.name_es,
-      price: parseFloat(formData.price), category: formData.category,
-      desc_zh: formData.desc_zh || '美味推荐', desc_en: formData.desc_en || 'Delicious',
-      desc_es: formData.desc_es || 'Delicioso', img: formData.img || FOOD_TEMPLATES[0].url
-    };
-    if (editingItem) {
-      setMenuItems(menuItems.map(item => item.id === editingItem.id ? { ...item, ...itemData } : item));
-      triggerNotification(t.alertEditSuccess);
-    } else {
-      const newId = 'dish_' + Date.now();
-      setMenuItems([...menuItems, { id: newId, ...itemData }]);
-      triggerNotification(t.alertAddSuccess);
+    
+    try {
+      const itemData = {
+        name_zh: formData.name_zh,
+        name_en: formData.name_en,
+        name_es: formData.name_es,
+        price: parseFloat(formData.price),
+        category: formData.category,
+        desc_zh: (formData.desc_zh && formData.desc_zh.trim() !== '') ? formData.desc_zh : '美味推荐',
+        desc_en: (formData.desc_en && formData.desc_en.trim() !== '') ? formData.desc_en : 'Delicious',
+        desc_es: (formData.desc_es && formData.desc_es.trim() !== '') ? formData.desc_es : 'Delicioso',
+        img: formData.img || 'https://images.unsplash.com/photo-1512058564366-18510be2db19?w=600&auto=format&fit=crop&q=80'
+      };
+      
+      if (editingItem) {
+        const updatedMenu = menuItems.map(item => 
+          item.id === editingItem.id ? { ...item, ...itemData } : item
+        );
+        setMenuItems(updatedMenu);
+        triggerNotification(t.alertEditSuccess);
+      } else {
+        const newId = 'dish_' + Date.now();
+        setMenuItems([...menuItems, { id: newId, ...itemData }]);
+        triggerNotification(t.alertAddSuccess);
+      }
+      
+      setFormData({ name_zh: '', name_en: '', name_es: '', price: '', category: '饭类', desc_zh: '', desc_en: '', desc_es: '', img: '' });
+      setEditingItem(null);
+    } catch (error) {
+      console.error('保存失败', error);
+      triggerNotification('保存失败，请重试', 'error');
     }
-    setFormData({ name_zh: '', name_en: '', name_es: '', price: '', category: '饭类', desc_zh: '', desc_en: '', desc_es: '', img: '' });
-    setEditingItem(null);
   };
 
-  const handleDeleteItem = (item) => {
-    if (!confirm(t.alertDeleteConfirm)) return;
-    setMenuItems(menuItems.filter(mi => mi.id !== item.id));
-    triggerNotification(t.alertDeleteSuccess);
-  };
-
-  const handleUpdateOrderStatus = (orderId, newStatus) => {
-    setReceivedOrders(receivedOrders.map(order => order.id === orderId ? { ...order, status: newStatus } : order));
-    triggerNotification(`${t.alertStatusUpdated} -> ${newStatus}`);
-  };
-
-  const categoriesList = ['全部', '饭类', '面类', '寿司', '亚洲小吃', '甜点', '饮品'];
-  const categoriesMap = { '全部': t.all, '饭类': t.rice, '面类': t.noodles, '寿司': t.sushi, '亚洲小吃': t.snacks, '甜点': t.desserts, '饮品': t.drinks };
+  const categoriesList = ['全部', '饭类', '面类', '寿司', '亚洲小吃', '亚洲烧烤', '甜点', '饮品'];
+  const categoriesMap = { '全部': t.all, '饭类': t.rice, '面类': t.noodles, '寿司': t.sushi, '亚洲小吃': t.snacks, '亚洲烧烤': t.bbq, '甜点': t.desserts, '饮品': t.drinks };
   const getLocalizedName = (item) => { if (lang === 'zh') return item.name_zh; if (lang === 'en') return item.name_en; return item.name_es; };
   const getLocalizedDesc = (item) => { if (lang === 'zh') return item.desc_zh; if (lang === 'en') return item.desc_en; return item.desc_es; };
   const filteredMenuItems = currentCategory === '全部' ? menuItems : menuItems.filter(item => item.category === currentCategory);
- // 隐藏菜品简介的全局样式
-React.useEffect(() => {
-  const style = document.createElement('style');
-  style.textContent = `
-    .line-clamp-2 {
-      display: none !important;
-    }
-  `;
-  document.head.appendChild(style);
-}, []);
- return (
-  <div className="min-h-screen bg-[#fcf9f5] text-stone-800 flex flex-col font-sans">
-    {showNotification && (
-      <div className="fixed top-6 left-1/2 transform -translate-x-1/2 z-50 px-6 py-3 rounded-full shadow-xl bg-[#8c7355] text-white text-sm font-semibold">
-        ✨ {showNotification.message}
-      </div>
-    )}
 
-    <header className="sticky top-0 z-40 bg-white/95 backdrop-blur-md border-b border-[#ebdcd0] shadow-sm">
-      <div className="max-w-4xl mx-auto px-4 py-3 flex items-center justify-between">
-        <div className="flex items-center gap-2.5">
-          <span className="text-2xl font-extrabold text-[#8c7355] tracking-wider">BLOOM</span>
-          <span className="text-xs font-semibold text-[#a68c6d]">{t.subtitle}</span>
+  return (
+    <div className="min-h-screen bg-[#fcf9f5] text-stone-800 flex flex-col font-sans">
+      {showNotification && (
+        <div className="fixed top-6 left-1/2 transform -translate-x-1/2 z-50 px-6 py-3 rounded-full shadow-xl bg-[#8c7355] text-white text-sm font-semibold">
+          ✨ {showNotification.message}
         </div>
-        <div className="flex items-center gap-2">
-          <div className="flex bg-[#f5ebe2] p-0.5 rounded-lg">
-            {['zh', 'en', 'es'].map((language) => (
-              <button key={language} onClick={() => setLang(language)} className={`px-2 py-1 text-[10px] font-bold rounded-md ${lang === language ? 'bg-[#8c7355] text-white' : 'text-stone-600'}`}>
-                {language.toUpperCase()}
-              </button>
-            ))}
+      )}
+
+      <header className="sticky top-0 z-40 bg-white/95 backdrop-blur-md border-b border-[#ebdcd0] shadow-sm">
+        <div className="max-w-4xl mx-auto px-4 py-3 flex items-center justify-between">
+          <div className="flex items-center gap-2.5">
+            <span className="text-2xl font-extrabold text-[#8c7355] tracking-wider">BLOOM</span>
+            <span className="text-xs font-semibold text-[#a68c6d]">{t.subtitle}</span>
           </div>
-          <button onClick={() => setActiveTab(activeTab === 'admin' ? 'menu' : 'admin')} className="text-[10px] font-bold px-3 py-1.5 rounded-lg border border-[#c5a880] text-[#8c7355]">
-            {activeTab === 'admin' ? t.backToMenu : t.adminPortal}
+          <div className="flex items-center gap-2">
+            <div className="flex bg-[#f5ebe2] p-0.5 rounded-lg">
+              {['zh', 'en', 'es'].map((language) => (
+                <button key={language} onClick={() => setLang(language)} className={`px-2 py-1 text-[10px] font-bold rounded-md ${lang === language ? 'bg-[#8c7355] text-white' : 'text-stone-600'}`}>
+                  {language.toUpperCase()}
+                </button>
+              ))}
+            </div>
+            <button onClick={() => setActiveTab(activeTab === 'admin' ? 'menu' : 'admin')} className="text-[10px] font-bold px-3 py-1.5 rounded-lg border border-[#c5a880] text-[#8c7355]">
+              {activeTab === 'admin' ? t.backToMenu : t.adminPortal}
+            </button>
+          </div>
+        </div>
+      </header>
+
+      <main className="flex-grow max-w-4xl w-full mx-auto px-4 py-6 pb-32">
+        {activeTab === 'menu' && (
+          <div className="space-y-6">
+            <div className="relative rounded-2xl overflow-hidden bg-gradient-to-r from-[#b5967a] to-[#8c7355] text-white p-6">
+              <span className="bg-[#ebdcd0] text-[#5e4c36] text-[10px] px-2.5 py-1 rounded-full font-bold">{t.todaySpecial}</span>
+              <h2 className="text-2xl font-extrabold mt-2">{t.bannerTitle}</h2>
+              <p className="text-xs text-stone-100">{t.bannerDesc}</p>
+            </div>
+
+            <div className="flex gap-2 overflow-x-auto pb-1">
+              {categoriesList.map(cat => (
+                <button key={cat} onClick={() => setCurrentCategory(cat)} className={`px-5 py-2.5 rounded-full font-bold text-xs whitespace-nowrap ${currentCategory === cat ? 'bg-[#8c7355] text-white shadow-md' : 'bg-white text-stone-600 border'}`}>
+                  {categoriesMap[cat]}
+                </button>
+              ))}
+            </div>
+
+            <div className="grid grid-cols-1 gap-3">
+              {filteredMenuItems.map(item => (
+                <div key={item.id} className="bg-white rounded-2xl overflow-hidden border shadow-sm flex h-32">
+                  <img src={item.img} className="w-32 h-full object-cover" onError={(e) => { e.target.src = FOOD_TEMPLATES[0].url; }} />
+                  <div className="p-3.5 flex flex-col justify-between flex-grow">
+                    <div>
+                      <div className="flex justify-between items-start">
+                        <h3 className="font-bold text-stone-950 break-words whitespace-normal text-sm leading-tight">{getLocalizedName(item)}</h3>
+                        <span className="text-[10px] px-2 py-0.5 rounded-full bg-[#f5ebe2] text-[#8c7355]">{categoriesMap[item.category]}</span>
+                      </div>
+                      <p className="text-[11px] text-stone-500 line-clamp-2">{getLocalizedDesc(item)}</p>
+                    </div>
+<div className="flex justify-between items-center pt-1">
+  <span className="text-base font-extrabold text-[#8c7355]">${item.price.toFixed(2)}</span>
+  {(() => {
+    const cartItem = cart.find(i => i.id === item.id);
+    const qty = cartItem?.quantity || 0;
+    if (qty === 0) {
+      return (
+        <button onClick={() => addToCart(item)} className="bg-[#8c7355] text-white px-3 py-1.5 rounded-lg text-xs font-bold">
+          ＋ {t.addToCart}
+        </button>
+      );
+    } else {
+      return (
+        <div className="flex items-center gap-2">
+          <button 
+            onClick={() => {
+              const existingIndex = cart.findIndex(cartItem => cartItem.id === item.id);
+              if (existingIndex !== -1) {
+                const currentQty = cart[existingIndex].quantity;
+                if (currentQty <= 1) {
+                  setCart(cart.filter(cartItem => cartItem.id !== item.id));
+                  const localizedName = lang === 'zh' ? item.name_zh : (lang === 'en' ? item.name_en : item.name_es);
+                  triggerNotification(`已取消 ${localizedName}`);
+                } else {
+                  const updatedCart = [...cart];
+                  updatedCart[existingIndex].quantity -= 1;
+                  setCart(updatedCart);
+                }
+              }
+            }} 
+            className="bg-red-500 text-white w-7 h-7 rounded-full text-sm font-bold hover:bg-red-600"
+          >
+            −
+          </button>
+          <span className="text-sm font-bold w-5 text-center text-stone-700">{qty}</span>
+          <button 
+            onClick={() => addToCart(item)} 
+            className="bg-[#8c7355] text-white w-7 h-7 rounded-full text-sm font-bold hover:bg-[#6a5a3e]"
+          >
+            +
           </button>
         </div>
-      </div>
-    </header>
-
-    <main className="flex-grow max-w-4xl w-full mx-auto px-4 py-6 pb-28">
-      {activeTab === 'menu' && (
-        <div className="space-y-6">
-          <div className="relative rounded-2xl overflow-hidden bg-gradient-to-r from-[#b5967a] to-[#8c7355] text-white p-6">
-            <span className="bg-[#ebdcd0] text-[#5e4c36] text-[10px] px-2.5 py-1 rounded-full font-bold">{t.todaySpecial}</span>
-            <h2 className="text-2xl font-extrabold mt-2">{t.bannerTitle}</h2>
-            <p className="text-xs text-stone-100">{t.bannerDesc}</p>
-          </div>
-
-          <div className="flex gap-2 overflow-x-auto pb-1">
-            {categoriesList.map(cat => (
-              <button key={cat} onClick={() => setCurrentCategory(cat)} className={`px-5 py-2.5 rounded-full font-bold text-xs whitespace-nowrap ${currentCategory === cat ? 'bg-[#8c7355] text-white shadow-md' : 'bg-white text-stone-600 border'}`}>
-                {categoriesMap[cat]}
-              </button>
-            ))}
-          </div>
-
-          <div className="grid grid-cols-1 gap-3">
-            {filteredMenuItems.map(item => (
-              <div key={item.id} className="bg-white rounded-2xl overflow-hidden border shadow-sm flex h-32">
-                <img src={item.img} className="w-32 h-full object-cover" onError={(e) => { e.target.src = FOOD_TEMPLATES[0].url; }} />
-                <div className="p-3.5 flex flex-col justify-between flex-grow">
-                  <div>
-                    <div className="flex justify-between items-start">
-                      <h3 className="font-bold text-stone-950 truncate text-sm">{getLocalizedName(item)}</h3>
-                      <span className="text-[10px] px-2 py-0.5 rounded-full bg-[#f5ebe2] text-[#8c7355]">{categoriesMap[item.category]}</span>
-                    </div>
-                    <p className="text-[11px] text-stone-500 line-clamp-2">{getLocalizedDesc(item)}</p>
-                  </div>
-                  <div className="flex justify-between items-center pt-1">
-                    <span className="text-base font-extrabold text-[#8c7355]">${item.price.toFixed(2)}</span>
-                    <button onClick={() => addToCart(item)} className="bg-[#8c7355] text-white px-3 py-1.5 rounded-lg text-xs font-bold">＋ {t.addToCart}</button>
+      );
+    }
+  })()}
+</div>
                   </div>
                 </div>
-              </div>
-            ))}
-          </div>
-          {filteredMenuItems.length === 0 && <div className="text-center py-16 text-stone-400">{t.emptyCategory}</div>}
-        </div>
-      )}
-
-      {activeTab === 'orders' && (
-        <div className="space-y-6">
-          <h2 className="text-lg font-bold">{t.orderStatus}</h2>
-          {currentOrderId ? (() => {
-            const currentOrder = receivedOrders.find(o => o.id === currentOrderId);
-            if (!currentOrder) return <div>Loading...</div>;
-            const statuses = ['已下单', '制作中', '已送达'];
-            const statusesLocale = [t.orderStatus1, t.orderStatus2, t.orderStatus3];
-            const currentIndex = statuses.indexOf(currentOrder.status);
-            return (
-              <div className="bg-white p-6 rounded-2xl border shadow-sm space-y-6">
-                <div className="flex justify-between items-center bg-[#fcf9f5] p-4 rounded-xl">
-                  <div><p className="text-[10px] text-stone-400">ID: {currentOrder.id}</p><p className="text-sm font-bold text-[#8c7355]">{t.orderNo}: <strong>{currentOrder.orderCode}</strong></p></div>
-                  <span className="px-3.5 py-1 bg-[#8c7355] text-white text-xs font-bold rounded-full">{statusesLocale[currentIndex]}</span>
-                </div>
-                <div className="flex items-center justify-between px-6 py-4">
-                  {statuses.map((status, index) => (
-                    <div key={status} className="flex flex-col items-center gap-2">
-                      <div className={`w-9 h-9 rounded-full flex items-center justify-center font-bold text-xs ${index <= currentIndex ? 'bg-[#8c7355] text-white' : 'bg-stone-100 text-stone-400'}`}>{index + 1}</div>
-                      <span className={`text-[11px] font-bold ${index <= currentIndex ? 'text-[#8c7355]' : 'text-stone-400'}`}>{statusesLocale[index]}</span>
-                    </div>
-                  ))}
-                </div>
-                <div className="border-t pt-4 space-y-3">
-                  <h4 className="font-bold text-xs">{t.myOrders}</h4>
-                  {currentOrder.items.map(item => (
-                    <div key={item.id} className="flex justify-between text-xs"><span>{getLocalizedName(item)} x{item.quantity}</span><span>${(item.price * item.quantity).toFixed(2)}</span></div>
-                  ))}
-                  <div className="flex justify-between font-extrabold text-sm border-t border-dashed pt-3"><span>{t.total}</span><span className="text-[#8c7355]">${currentOrder.totalPrice.toFixed(2)}</span></div>
-                </div>
-              </div>
-            );
-          })() : (
-            <div className="text-center py-20 bg-white rounded-2xl border shadow-sm">
-              <span className="text-6xl">🍲</span>
-              <p className="text-xs mt-3">{t.noOrders}</p>
-              <button onClick={() => setActiveTab('menu')} className="mt-4 px-6 py-2.5 bg-[#8c7355] text-white font-bold rounded-full text-xs">{t.customerMenu}</button>
+              ))}
             </div>
-          )}
-        </div>
-      )}
-      {activeTab === 'admin' && (
+            {filteredMenuItems.length === 0 && <div className="text-center py-16 text-stone-400">{t.emptyCategory}</div>}
+          </div>
+        )}
+
+        {activeTab === 'orders' && (
+          <div className="space-y-6">
+            <h2 className="text-lg font-bold">{t.orderStatus}</h2>
+            {currentOrderId ? (() => {
+              const currentOrder = receivedOrders.find(o => o.id === currentOrderId);
+              if (!currentOrder) return <div>Loading...</div>;
+              const statuses = ['已下单', '制作中', '已送达'];
+              const statusesLocale = [t.orderStatus1, t.orderStatus2, t.orderStatus3];
+              const currentIndex = statuses.indexOf(currentOrder.status);
+              return (
+                <div className="bg-white p-6 rounded-2xl border shadow-sm space-y-6">
+                  <div className="flex justify-between items-center bg-[#fcf9f5] p-4 rounded-xl">
+                    <div><p className="text-[10px] text-stone-400">ID: {currentOrder.id}</p><p className="text-sm font-bold text-[#8c7355]">{t.orderNo}: <strong>{currentOrder.orderCode}</strong></p></div>
+                    <span className="px-3.5 py-1 bg-[#8c7355] text-white text-xs font-bold rounded-full">{statusesLocale[currentIndex]}</span>
+                  </div>
+                  <div className="flex items-center justify-between px-6 py-4">
+                    {statuses.map((status, index) => (
+                      <div key={status} className="flex flex-col items-center gap-2">
+                        <div className={`w-9 h-9 rounded-full flex items-center justify-center font-bold text-xs ${index <= currentIndex ? 'bg-[#8c7355] text-white' : 'bg-stone-100 text-stone-400'}`}>{index + 1}</div>
+                        <span className={`text-[11px] font-bold ${index <= currentIndex ? 'text-[#8c7355]' : 'text-stone-400'}`}>{statusesLocale[index]}</span>
+                      </div>
+                    ))}
+                  </div>
+                  <div className="border-t pt-4 space-y-3">
+                    <h4 className="font-bold text-xs">{t.myOrders}</h4>
+                    {currentOrder.items.map(item => (
+                      <div key={item.id} className="flex justify-between text-xs"><span>{getLocalizedName(item)} x{item.quantity}</span><span>${(item.price * item.quantity).toFixed(2)}</span></div>
+                    ))}
+                    <div className="flex justify-between font-extrabold text-sm border-t border-dashed pt-3"><span>{t.total}</span><span className="text-[#8c7355]">${currentOrder.totalPrice.toFixed(2)}</span></div>
+                  </div>
+                </div>
+              );
+            })() : (
+              <div className="text-center py-20 bg-white rounded-2xl border shadow-sm">
+                <span className="text-6xl">🍲</span>
+                <p className="text-xs mt-3">{t.noOrders}</p>
+                <button onClick={() => setActiveTab('menu')} className="mt-4 px-6 py-2.5 bg-[#8c7355] text-white font-bold rounded-full text-xs">{t.customerMenu}</button>
+              </div>
+            )}
+          </div>
+        )}
+
+        {activeTab === 'admin' && (
           <div className="space-y-6">
             {!isAdminLoggedIn ? (
               <div className="max-w-md mx-auto bg-white p-6 rounded-2xl border shadow-sm">
@@ -466,8 +541,11 @@ React.useEffect(() => {
                     <input type="text" required value={formData.name_zh} onChange={(e) => setFormData({ ...formData, name_zh: e.target.value })} placeholder={t.dishNameZh} className="w-full px-3 py-2 rounded-lg border" />
                     <input type="text" required value={formData.name_en} onChange={(e) => setFormData({ ...formData, name_en: e.target.value })} placeholder={t.dishNameEn} className="w-full px-3 py-2 rounded-lg border" />
                     <input type="text" required value={formData.name_es} onChange={(e) => setFormData({ ...formData, name_es: e.target.value })} placeholder={t.dishNameEs} className="w-full px-3 py-2 rounded-lg border" />
-                    <div className="flex gap-2"><input type="number" step="0.01" required value={formData.price} onChange={(e) => setFormData({ ...formData, price: e.target.value })} placeholder={t.price} className="w-1/2 px-3 py-2 rounded-lg border" /><select value={formData.category} onChange={(e) => setFormData({ ...formData, category: e.target.value })} className="w-1/2 px-3 py-2 rounded-lg border"><option>饭类</option><option>面类</option><option>寿司</option><option>亚洲小吃</option><option>甜点</option><option>饮品</option></select></div>
-                    <div className="border border-dashed rounded-lg p-2 text-center relative"><input type="file" accept="image/*" onChange={handleLocalImageUpload} className="absolute inset-0 opacity-0 cursor-pointer" /><span className="text-[10px]">{t.uploadLocal}</span></div>
+                    <div className="flex gap-2"><input type="number" step="0.01" required value={formData.price} onChange={(e) => setFormData({ ...formData, price: e.target.value })} placeholder={t.price} className="w-1/2 px-3 py-2 rounded-lg border" /><select value={formData.category} onChange={(e) => setFormData({ ...formData, category: e.target.value })} className="w-1/2 px-3 py-2 rounded-lg border"><option>饭类</option><option>面类</option><option>寿司</option><option>亚洲小吃</option><option>亚洲烧烤</option><option>甜点</option><option>饮品</option></select></div>
+                 <textarea rows="2" value={formData.desc_zh} onChange={(e) => setFormData({ ...formData, desc_zh: e.target.value })} placeholder={t.descZh} className="w-full px-3 py-2 rounded-lg border text-xs" />
+<textarea rows="2" value={formData.desc_en} onChange={(e) => setFormData({ ...formData, desc_en: e.target.value })} placeholder={t.descEn} className="w-full px-3 py-2 rounded-lg border text-xs" />
+<textarea rows="2" value={formData.desc_es} onChange={(e) => setFormData({ ...formData, desc_es: e.target.value })} placeholder={t.descEs} className="w-full px-3 py-2 rounded-lg border text-xs" />
+   <div className="border border-dashed rounded-lg p-2 text-center relative"><input type="file" accept="image/*" onChange={handleLocalImageUpload} className="absolute inset-0 opacity-0 cursor-pointer" /><span className="text-[10px]">{t.uploadLocal}</span></div>
                     <div className="grid grid-cols-6 gap-1">{FOOD_TEMPLATES.map(tem => (<button key={tem.name} type="button" onClick={() => { setFormData(prev => ({ ...prev, img: tem.url })); triggerNotification(t.imageLoaded); }} className={`h-7 rounded overflow-hidden border ${formData.img === tem.url ? 'border-[#8c7355]' : 'border-transparent'}`}><img src={tem.url} className="w-full h-full object-cover" /></button>))}</div>
                     {formData.img && <img src={formData.img} className="w-10 h-10 object-cover rounded" />}
                     <button type="submit" className="w-full py-2 bg-[#8c7355] text-white font-bold rounded-lg">{editingItem ? t.submitEdit : t.submitAdd}</button>
@@ -475,27 +553,38 @@ React.useEffect(() => {
                 </div>
                 <div className="lg:col-span-2 space-y-6">
                   <div className="bg-white p-5 rounded-xl border shadow-sm"><h3 className="font-bold text-xs pb-2 border-b">{t.adminOrderPanel}</h3><div className="space-y-3 max-h-80 overflow-y-auto mt-3">{receivedOrders.map(order => (<div key={order.id} className="p-3 bg-[#fcf9f5] rounded-xl border space-y-2"><div className="flex justify-between"><span className="font-bold text-sm">{t.orderNo}: {order.orderCode}</span><span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${order.status === '已送达' ? 'bg-green-100 text-green-700' : order.status === '制作中' ? 'bg-amber-100 text-amber-700' : 'bg-orange-100 text-orange-700'}`}>{order.status === '已下单' ? t.orderStatus1 : (order.status === '制作中' ? t.orderStatus2 : t.orderStatus3)}</span></div><div className="text-stone-600 text-xs">{order.items.map(it => (<div key={it.id} className="flex justify-between"><span>{getLocalizedName(it)} x{it.quantity}</span><span>${(it.price * it.quantity).toFixed(2)}</span></div>))}</div><div className="flex justify-between border-t pt-2"><span className="font-bold">{t.total}: ${(order.totalPrice).toFixed(2)}</span><div>{order.status === '已下单' && <button onClick={() => handleUpdateOrderStatus(order.id, '制作中')} className="bg-[#8c7355] text-white px-2 py-1 rounded text-xs">{t.startCooking}</button>}{order.status === '制作中' && <button onClick={() => handleUpdateOrderStatus(order.id, '已送达')} className="bg-green-600 text-white px-2 py-1 rounded text-xs">{t.markDelivered}</button>}</div></div></div>))}{receivedOrders.length === 0 && <div className="text-center py-8 text-stone-400 text-xs">{t.emptyOrdersAdmin}</div>}</div></div>
-                  <div className="bg-white p-5 rounded-xl border shadow-sm"><h3 className="font-bold text-xs pb-2 border-b">{t.adminDishPanel}</h3><div className="divide-y max-h-96 overflow-y-auto">{menuItems.map(item => (<div key={item.id} className="py-2.5 flex justify-between items-center"><div className="flex items-center gap-3"><img src={item.img} className="w-10 h-10 object-cover rounded" /><div><p className="font-bold text-xs">{getLocalizedName(item)}</p><p className="text-[10px] text-stone-400">{categoriesMap[item.category]}</p></div></div><div className="flex items-center gap-4"><span className="font-bold">${item.price.toFixed(2)}</span><button onClick={() => { setEditingItem(item); setFormData({ name_zh: item.name_zh, name_en: item.name_en, name_es: item.name_es, price: item.price.toString(), category: item.category, desc_zh: item.desc_zh || '', desc_en: item.desc_en || '', desc_es: item.desc_es || '', img: item.img }); }} className="text-blue-600 text-xs">{t.editBtn}</button><button onClick={() => handleDeleteItem(item)} className="text-red-600 text-xs">{t.removeBtn}</button></div></div>))}</div></div>
+                  <div className="bg-white p-5 rounded-xl border shadow-sm"><h3 className="font-bold text-xs pb-2 border-b">{t.adminDishPanel}</h3><div className="divide-y max-h-96 overflow-y-auto">{menuItems.map((item, index) => (<div key={item.id} className="py-2.5 flex justify-between items-center"><div className="flex items-center gap-3"><img src={item.img} className="w-10 h-10 object-cover rounded" /><div><p className="font-bold text-xs">{getLocalizedName(item)}</p><p className="text-[10px] text-stone-400">{categoriesMap[item.category]}</p></div></div><div className="flex items-center gap-2"><span className="font-bold">${item.price.toFixed(2)}</span><button onClick={() => moveItem(index, 'up')} className="text-gray-500 text-xs px-1">↑</button>
+<button onClick={() => moveItem(index, 'down')} className="text-gray-500 text-xs px-1">↓</button><button onClick={() => { setEditingItem(item); setFormData({ name_zh: item.name_zh, name_en: item.name_en, name_es: item.name_es, price: item.price.toString(), category: item.category, desc_zh: item.desc_zh || '', desc_en: item.desc_en || '', desc_es: item.desc_es || '', img: item.img }); }} className="text-blue-600 text-xs">{t.editBtn}</button><button onClick={() => handleDeleteItem(item)} className="text-red-600 text-xs">{t.removeBtn}</button></div></div>))}</div></div>
                 </div>
               </div>
             )}
           </div>
         )}
-      </main>
+</main>
 
       {activeTab === 'menu' && cart.length > 0 && (
-      <div className="fixed bottom-0 left-0 right-0 bg-white border-t flex justify-around py-3y max-w-2xl mx-auto">
-```
-          <div className="flex items-center gap-3"><span className="text-xl">🛒</span><span className="absolute -top-1.5 -right-2 bg-[#8c7355] rounded-full w-4.5 h-4.5 text-center text-[10px]">{cart.reduce((s, i) => s + i.quantity, 0)}</span><div><p className="font-bold text-xs">${cartTotal.toFixed(2)}</p></div></div>
-          <button onClick={submitOrder} className="bg-[#8c7355] px-6 py-2 rounded-full text-[11px] font-bold">{t.checkout}</button>
+        <div className="fixed bottom-16 left-0 right-0 z-30 max-w-4xl mx-auto px-4">
+          <div className="bg-stone-900 text-white rounded-full p-3 px-5 flex justify-between items-center shadow-lg">
+            <div className="flex items-center gap-3">
+              <span>🛒</span>
+              <span className="bg-amber-600 rounded-full w-5 h-5 flex items-center justify-center text-[10px]">{cart.reduce((s, i) => s + i.quantity, 0)}</span>
+              <span className="font-bold">${cartTotal.toFixed(2)}</span>
+            </div>
+            <button onClick={submitOrder} className="bg-amber-500 px-5 py-2 rounded-full text-sm font-bold">{t.checkout}</button>
+          </div>
         </div>
       )}
 
       {activeTab !== 'admin' && (
-        <div className="fixed bottom-0 left-0 right-0 bg-white border-t shadow-lg p-4 flex justify-between items-center max-w-2xl mx-auto">
-```
-          <button onClick={() => setActiveTab('menu')} className={`flex flex-col items-center text-[10px] font-bold ${activeTab === 'menu' ? 'text-[#8c7355]' : 'text-stone-400'}`}><span className="text-lg">🍽️</span><span>{t.customerMenu}</span></button>
-          <button onClick={() => setActiveTab('orders')} className={`flex flex-col items-center text-[10px] font-bold ${activeTab === 'orders' ? 'text-[#8c7355]' : 'text-stone-400'}`}><span className="text-lg">📋</span><span>{t.myOrders}</span></button>
+        <div className="fixed bottom-0 left-0 right-0 bg-white border-t shadow-lg p-3 flex justify-around items-center max-w-4xl mx-auto z-30">
+          <button onClick={() => setActiveTab('menu')} className={`flex flex-col items-center text-xs font-bold ${activeTab === 'menu' ? 'text-[#8c7355]' : 'text-stone-400'}`}>
+            <span className="text-xl">🍽️</span>
+            <span>{t.customerMenu}</span>
+          </button>
+          <button onClick={() => setActiveTab('orders')} className={`flex flex-col items-center text-xs font-bold ${activeTab === 'orders' ? 'text-[#8c7355]' : 'text-stone-400'}`}>
+            <span className="text-xl">📋</span>
+            <span>{t.myOrders}</span>
+          </button>
         </div>
       )}
     </div>
