@@ -291,7 +291,7 @@ function App() {
         var localData = localStorage.getItem('bloom_menu_items');
         if (localData) {
           var parsed = JSON.parse(localData);
-          if (parsed && Array.isArray(parsed) && parsed.length > 0) {
+          if (parsed && Array.isArray(parsed) && parsed.length >= DEFAULT_MENU.length) {
             if (isMounted) {
               setMenuItems(parsed);
               setIsLoading(false);
