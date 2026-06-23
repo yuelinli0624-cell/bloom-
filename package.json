@@ -1,0 +1,13 @@
+{
+  "name": "bloom-menu",
+  "version": "1.0.0",
+  "description": "BLOOM 绽里点餐系统",
+  "main": "index.html",
+  "scripts": {
+    "dev": "npx http-server",
+    "build": "echo 'No build needed for static HTML'"
+  },
+  "keywords": ["restaurant", "menu", "ordering"],
+  "author": "",
+  "license": "MIT"
+}
